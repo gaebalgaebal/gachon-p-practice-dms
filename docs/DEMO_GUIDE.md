@@ -4,6 +4,8 @@
 
 Python 3.10~3.12 64비트를 권장합니다. Windows PowerShell에서 `./setup_demo.ps1`, `./run_demo.ps1` 순서로 실행하거나 README의 Python 명령을 직접 사용합니다. 스크립트는 시스템 실행 정책을 바꾸지 않습니다.
 
+Ubuntu처럼 최소 설치된 Linux에서는 MediaPipe CPU 실행에도 EGL/GLES 공유 라이브러리가 필요할 수 있습니다. `libGLESv2.so.2` 또는 EGL 로딩 오류가 나면 `sudo apt-get install libegl1 libgles2 libgl1`로 시스템 의존성을 준비합니다. GUI 화면을 쓰려면 별도 데스크톱 세션도 필요하고 서버에서는 `--headless`를 사용합니다. GitHub의 Linux 영상 검사에도 이 준비 단계를 포함합니다.
+
 `pip install -e '.[vision]'`은 MediaPipe 0.10.35, OpenCV-contrib 4.13.0.92, NumPy 2.2.6을 설치합니다. OpenCV-contrib에는 일반 cv2 API가 포함됩니다. opencv-python이나 headless 배포판을 같은 환경에 추가로 설치하지 마세요. 주요 직접 의존성은 고정했고 전이 의존성 전체 잠금은 아직 없습니다. 재현 실험 때 `python -m pip freeze`도 기록하세요.
 
 ```sh

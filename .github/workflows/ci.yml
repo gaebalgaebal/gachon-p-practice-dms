@@ -41,6 +41,11 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+      - name: Install Linux MediaPipe runtime libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgles2 libgl1
       - name: Install actual vision stack
         run: python -m pip install -e ".[vision]"
       - name: Download and verify official face model
