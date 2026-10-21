@@ -1,0 +1,31 @@
+name: Starter checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install core package
+        run: python -m pip install -e .
+      - name: Test temporal rules and split validation
+        run: python -m unittest discover -s tests -v
+      - name: Replay synthetic features
+        run: python -m dms --input examples/synthetic_features.csv --output runs/demo.jsonl
+      - name: Validate synthetic manifest
+        run: python scripts/validate_manifest.py examples/synthetic_manifest.csv

@@ -1,0 +1,4 @@
+sample_id,subject_id,session_id,split,label
+synthetic_001,subject_a,session_a,train,normal
+synthetic_002,subject_b,session_b,val,normal
+synthetic_003,subject_c,session_c,test,normal

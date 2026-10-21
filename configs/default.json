@@ -1,0 +1,8 @@
+{
+  "ear_close": 0.20,
+  "ear_open": 0.24,
+  "closed_seconds": 1.5,
+  "yaw_limit_degrees": 25.0,
+  "away_seconds": 1.5,
+  "max_gap_seconds": 0.75
+}
