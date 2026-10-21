@@ -1,0 +1,4 @@
+# Install only one OpenCV distribution: contrib includes standard cv2 APIs.
+mediapipe==0.10.35
+opencv-contrib-python==4.13.0.92
+numpy==2.2.6

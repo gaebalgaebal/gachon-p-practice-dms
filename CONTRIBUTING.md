@@ -16,6 +16,6 @@ python -m dms --input examples/synthetic_features.csv --output runs/demo.jsonl
 python scripts/validate_manifest.py examples/synthetic_manifest.csv
 ```
 
-초기 패키지는 표준 라이브러리만 사용합니다. 실제 영상·학습 환경을 추가할 때 호환 버전과 실행 검증 결과를 기록하고 재현 환경을 고정합니다. 테스트 성공을 AI 인식 성능으로 보고하지 않습니다.
+기본 특징 재생 패키지는 표준 라이브러리만 사용합니다. 실제 영상 데모는 `python -m pip install -e '.[vision]'`과 `python scripts/download_model.py`로 준비합니다. 이후 `python scripts/integration_smoke.py`로 실제 얼굴 모델 연결을 확인합니다. 선택적 행동 경로는 `.[action]` 설치 후 `python scripts/action_smoke.py`로 검사합니다. 각 smoke 도구는 새 출력 폴더를 요구합니다. 재실행 시 `--output runs/new-folder`를 지정하세요. 테스트 성공을 AI 인식 성능으로 보고하지 않습니다.
 
 데이터 원본·모델 가중치·개인 얼굴·학번·연락처·비밀 키를 올리지 않습니다. 모델이나 데이터의 사용 조건 변경은 관련 문서에 반영합니다. 생성형 AI로 작성한 코드도 팀원이 흐름·한계·검증 방법을 설명하고 수정할 수 있어야 합니다.

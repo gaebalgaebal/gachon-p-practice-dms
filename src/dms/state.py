@@ -14,6 +14,7 @@ class Config:
     yaw_limit_degrees: float = 25.0
     away_seconds: float = 1.5
     max_gap_seconds: float = 0.75
+    pitch_limit_degrees: float = 20.0
 
     def __post_init__(self):
         if not all(isfinite(v) for v in vars(self).values()):
@@ -24,6 +25,8 @@ class Config:
             raise ValueError("Durations must be positive")
         if not 0 < self.yaw_limit_degrees < 180:
             raise ValueError("Yaw limit must be between 0 and 180")
+        if not 0 < self.pitch_limit_degrees < 180:
+            raise ValueError("Pitch limit must be between 0 and 180")
 
 
 class StateEngine:
@@ -73,7 +76,14 @@ class StateEngine:
         attention = "unknown"
         if f.yaw_degrees is None or not isfinite(f.yaw_degrees) or abs(f.yaw_degrees) > 180:
             self._away_at = None
-        elif abs(f.yaw_degrees) > c.yaw_limit_degrees:
+        elif f.pitch_degrees is not None and (
+            not isfinite(f.pitch_degrees) or abs(f.pitch_degrees) > 180
+        ):
+            self._away_at = None
+        elif (abs(f.yaw_degrees) > c.yaw_limit_degrees or (
+            f.pitch_degrees is not None and isfinite(f.pitch_degrees)
+            and abs(f.pitch_degrees) > c.pitch_limit_degrees
+        )):
             if self._away_at is None:
                 self._away_at = t
             # A turned head is pending until sustained; do not call it forward.

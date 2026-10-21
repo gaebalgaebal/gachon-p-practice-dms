@@ -64,3 +64,13 @@ class StateTests(unittest.TestCase):
             Config(ear_close=.3, ear_open=.2)
         with self.assertRaises(ValueError):
             Config(closed_seconds=-1)
+
+    def test_pitch_detects_sustained_downward_head(self):
+        engine = StateEngine()
+        for t in [0, .5, 1, 1.5]:
+            result = engine.update(Features(t, .3, 0, True, 30))
+        self.assertEqual(result.attention, 'off_forward')
+
+    def test_invalid_pitch_is_unknown(self):
+        result = StateEngine().update(Features(0, .3, 0, True, math.nan))
+        self.assertEqual(result.attention, 'unknown')
