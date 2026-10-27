@@ -86,3 +86,6 @@ python -m dms --input examples/synthetic_features.csv --output runs/synthetic.js
 - [협업](CONTRIBUTING.md) · [실험 기록 양식](docs/EXPERIMENT_TEMPLATE.md)
 
 연구·교육용 프로토타입이며 실차 안전 제품이 아닙니다. 원본 기획서의 학번·연락처·비공개 멘토링 원문, 얼굴 영상, 데이터셋 원본 및 학습 가중치는 커밋하지 않습니다. 코드 재사용 라이선스는 팀 협의 후 결정합니다.
+
+# 의견 제시
+--> (함태은 10/27) : 졸음 운전 파악 방법에 하품이나 고개 변환 각도를 통해 조는 것을 파악하는 것도 좋을 것 같습니다.
