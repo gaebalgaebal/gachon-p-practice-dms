@@ -14,6 +14,8 @@ class Features:
     yaw_degrees: float | None
     face_valid: bool = True
     pitch_degrees: float | None = None
+    gaze_x_ratio: float | None = None
+    gaze_y_ratio: float | None = None
 
 
 @dataclass(frozen=True)

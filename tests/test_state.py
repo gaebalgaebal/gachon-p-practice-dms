@@ -74,3 +74,22 @@ class StateTests(unittest.TestCase):
     def test_invalid_pitch_is_unknown(self):
         result = StateEngine().update(Features(0, .3, 0, True, math.nan))
         self.assertEqual(result.attention, 'unknown')
+
+    def test_sustained_eye_deviation_detects_off_forward(self):
+        engine = StateEngine()
+        for t in [0, .5, 1, 1.5]:
+            result = engine.update(Features(t, .3, 0, True, 0, .2, 0))
+        self.assertEqual(result.attention, "off_forward")
+
+    def test_short_eye_deviation_is_pending_not_forward(self):
+        engine = StateEngine()
+        self.assertEqual(engine.update(Features(0, .3, 0, True, 0, .2, 0)).attention,
+                         "unknown")
+        self.assertEqual(engine.update(Features(.5, .3, 0, True, 0, 0, 0)).attention,
+                         "forward")
+
+    def test_invalid_gaze_is_unknown_but_missing_gaze_uses_head_pose(self):
+        engine = StateEngine()
+        self.assertEqual(engine.update(Features(0, .3, 0, True, 0)).attention, "forward")
+        self.assertEqual(engine.update(Features(.5, .3, 0, True, 0, math.nan, 0)).attention,
+                         "unknown")

@@ -1,8 +1,46 @@
 """Optional task-trained MobileNetV3-Small adapter; no built-in action weights."""
 
+from collections import Counter, deque
 from pathlib import Path
 
 ALLOWED_ACTIONS = {"normal", "phone", "drink", "eat", "smoke"}
+
+
+class ActionSmoother:
+    """Majority vote over fresh model outputs; reset immediately on unusable input."""
+
+    def __init__(self, window: int = 5, consensus: float = .6, min_samples: int = 3):
+        if window <= 0 or not 0 < consensus <= 1 or not 0 < min_samples <= window:
+            raise ValueError("Require positive window, consensus in (0,1], and min_samples <= window")
+        self.window = window
+        self.consensus = consensus
+        self.min_samples = min_samples
+        self._labels = deque(maxlen=window)
+        self._scores = deque(maxlen=window)
+
+    def reset(self):
+        self._labels.clear()
+        self._scores.clear()
+
+    def update(self, label: str, scores: dict[str, float]):
+        if label != "unknown" and label not in ALLOWED_ACTIONS:
+            raise ValueError("Unsupported action label")
+        self._labels.append(label)
+        self._scores.append(dict(scores))
+        return self.current()
+
+    def current(self):
+        if not self._labels:
+            return "unknown", {}
+        counts = Counter(self._labels)
+        label, votes = counts.most_common(1)[0]
+        if (len(self._labels) < self.min_samples or label == "unknown"
+                or votes / len(self._labels) < self.consensus):
+            label = "unknown"
+        keys = sorted({key for row in self._scores for key in row})
+        averaged = {key: sum(row.get(key, 0.) for row in self._scores) / len(self._scores)
+                    for key in keys}
+        return label, averaged
 
 
 class MobileNetAction:

@@ -8,10 +8,26 @@ class CalibrationTests(unittest.TestCase):
     def test_neutral_adjusts_eye_thresholds(self):
         calibration = Calibrator()
         for index in range(22):
-            result = calibration.update(index / 10, .3, 12., -3.)
+            result = calibration.update(index / 10, .3, 12., -3., .48, .52)
         self.assertIsNotNone(result)
         self.assertAlmostEqual(result.config(Config()).ear_close, .195)
         self.assertAlmostEqual(angle_difference(40, result.yaw), 28)
+        self.assertAlmostEqual(result.iris_x, .48)
+        self.assertAlmostEqual(result.iris_y, .52)
+
+    def test_unstable_iris_delays_calibration(self):
+        calibration = Calibrator()
+        for index in range(22):
+            result = calibration.update(index / 10, .3, 0., 0., index % 2, index % 2)
+        self.assertIsNone(result)
+
+    def test_missing_iris_allows_head_only_fallback(self):
+        calibration = Calibrator()
+        for index in range(22):
+            result = calibration.update(index / 10, .3, 0., 0.)
+        self.assertIsNotNone(result)
+        self.assertIsNone(result.iris_x)
+        self.assertIsNone(result.iris_y)
 
     def test_moving_head_not_calibrated(self):
         calibration = Calibrator()

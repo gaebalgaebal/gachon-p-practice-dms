@@ -71,12 +71,15 @@ def render(frame, observation, state, info, roi_box, fps):
     yaw = f"{info['yaw']:.1f}" if info['yaw'] is not None else "--"
     pitch = f"{info['pitch']:.1f}" if info['pitch'] is not None else "--"
     label(f"EAR {ear} / Yaw {yaw} / Pitch {pitch}", 9)
+    gaze_x = f"{info['gaze_x']:+.2f}" if info['gaze_x'] is not None else "--"
+    gaze_y = f"{info['gaze_y']:+.2f}" if info['gaze_y'] is not None else "--"
+    label(f"Calibrated gaze X {gaze_x} / Y {gaze_y}", 10)
     perclos = info['closed_fraction']
-    label(f"Closed fraction: {perclos:.2f}" if perclos is not None else "Closed fraction: --", 10)
-    label(f"Window coverage: {info['eye_coverage']:.0%} / FPS: {fps:.1f}", 11)
-    label("C: recalibrate  Q / Esc: exit", 13)
-    label("Look forward, eyes OPEN to calibrate", 14, (80, 200, 255), .48)
-    label("Head direction proxy; not eye gaze", 15, (160, 165, 175), .48)
+    label(f"Closed fraction: {perclos:.2f}" if perclos is not None else "Closed fraction: --", 11)
+    label(f"Window coverage: {info['eye_coverage']:.0%} / FPS: {fps:.1f}", 12)
+    label("C: recalibrate  Q / Esc: exit", 14)
+    label("Look forward, eyes OPEN to calibrate", 15, (80, 200, 255), .48)
+    label("Calibrated iris proxy; not a true gaze vector", 16, (160, 165, 175), .48)
     if active:
         cv2.rectangle(canvas, (2, 2), (frame.shape[1] - 3, frame.shape[0] - 3), color, 5)
         cv2.putText(canvas, "CHECK DRIVER STATE", (14, 35), cv2.FONT_HERSHEY_SIMPLEX,
@@ -109,10 +112,14 @@ def run(args):
     previous_t = -1.0
     applied_neutral = None
     action_model = None
+    action_smoother = None
     try:
         if args.action_checkpoint:
-            from .action import MobileNetAction
+            from .action import ActionSmoother, MobileNetAction
             action_model = MobileNetAction(args.action_checkpoint, args.action_threshold)
+            action_smoother = ActionSmoother(
+                args.action_window, args.action_consensus, args.action_min_samples
+            )
         if args.video:
             cap = cv2.VideoCapture(str(args.video.resolve()))
         elif platform.system() == "Windows":
@@ -173,6 +180,8 @@ def run(args):
             neutral = calibration.update(
                 t, observation.ear if valid else None,
                 observation.yaw if valid else None, observation.pitch if valid else None,
+                observation.iris_x if valid else None,
+                observation.iris_y if valid else None,
             )
             if neutral is not None and applied_neutral is None:
                 engine = StateEngine(neutral.config(config))
@@ -183,20 +192,34 @@ def run(args):
                 )
             yaw = angle_difference(observation.yaw, neutral.yaw) if valid and neutral else None
             pitch = angle_difference(observation.pitch, neutral.pitch) if valid and neutral else None
+            gaze_x = (observation.iris_x - neutral.iris_x
+                      if valid and neutral and observation.iris_x is not None
+                      and neutral.iris_x is not None else None)
+            gaze_y = (observation.iris_y - neutral.iris_y
+                      if valid and neutral and observation.iris_y is not None
+                      and neutral.iris_y is not None else None)
             usable = valid and neutral is not None
-            features = Features(t, observation.ear, yaw, usable, pitch)
+            features = Features(t, observation.ear, yaw, usable, pitch, gaze_x, gaze_y)
             state = engine.update(features)
-            state = DriverState(t, state.drowsiness, state.attention, "unknown", "mediapipe_ear_pose_v1")
+            source = "mediapipe_ear_pose_iris_v1" if gaze_x is not None else "mediapipe_ear_pose_v1"
+            state = DriverState(t, state.drowsiness, state.attention, "unknown", source)
             action_scores = {}
             if action_model and usable:
-                # Always compute a fresh prediction; never keep a stale action after loss.
-                action, action_scores = action_model.predict(crop)
+                if frame_count % args.action_interval == 0:
+                    raw_action, raw_scores = action_model.predict(crop)
+                    action, action_scores = action_smoother.update(raw_action, raw_scores)
+                else:
+                    action, action_scores = action_smoother.current()
                 state = DriverState(t, state.drowsiness, state.attention, action, state.source)
+            elif action_smoother:
+                # Never retain an action after the face/ROI becomes unusable.
+                action_smoother.reset()
             closed = observation.ear < engine.config.ear_close if usable else None
             fraction, coverage = eye_history.update(t, closed)
             unknown += state.drowsiness == "unknown" or state.attention == "unknown"
             info = {"calibration": "ready" if neutral else "hold forward / eyes open",
-                    "yaw": yaw, "pitch": pitch, "closed_fraction": fraction, "eye_coverage": coverage}
+                    "yaw": yaw, "pitch": pitch, "gaze_x": gaze_x, "gaze_y": gaze_y,
+                    "closed_fraction": fraction, "eye_coverage": coverage}
             frame_count += 1
             elapsed = time.perf_counter() - started
             fps = frame_count / max(elapsed, 1e-6)
@@ -214,7 +237,9 @@ def run(args):
                    "ear": observation.ear, "left_ear": observation.left_ear,
                    "right_ear": observation.right_ear, "raw_yaw": observation.yaw,
                    "raw_pitch": observation.pitch, "relative_yaw": yaw, "relative_pitch": pitch,
-                   "iris_x_diagnostic": observation.iris_x, "closed_fraction": fraction,
+                   "iris_x": observation.iris_x, "iris_y": observation.iris_y,
+                   "relative_gaze_x": gaze_x, "relative_gaze_y": gaze_y,
+                   "closed_fraction": fraction,
                    "eye_window_coverage": coverage, "calibrated": neutral is not None,
                    "baseline_drowsiness": "suspected" if usable and closed else (
                        "normal" if usable else "unknown"), "action_scores": action_scores,
@@ -282,6 +307,10 @@ def run(args):
                        "action_checkpoint_sha256": hashlib.sha256(args.action_checkpoint.read_bytes()).hexdigest()
                            if args.action_checkpoint else None,
                        "action_threshold": args.action_threshold,
+                       "action_interval": args.action_interval,
+                       "action_window": args.action_window,
+                       "action_consensus": args.action_consensus,
+                       "action_min_samples": args.action_min_samples,
                        "config_sha256": hashlib.sha256(args.config.read_bytes()).hexdigest(),
                        "note": "Technical demo, not accuracy evaluation; closed fraction is not clinical PERCLOS."}
             (args.output / "summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False),
@@ -305,6 +334,12 @@ def main():
     parser.add_argument("--sound", action="store_true", help="Opt in to Windows warning sound")
     parser.add_argument("--action-checkpoint", type=Path)
     parser.add_argument("--action-threshold", type=float, default=.7)
+    parser.add_argument("--action-interval", type=int, default=3,
+                        help="Run the action CNN every N usable frames")
+    parser.add_argument("--action-window", type=int, default=5,
+                        help="Number of fresh CNN outputs used for temporal voting")
+    parser.add_argument("--action-consensus", type=float, default=.6)
+    parser.add_argument("--action-min-samples", type=int, default=3)
     args = parser.parse_args()
     if args.max_frames is not None and args.max_frames <= 0:
         parser.error("--max-frames must be positive")
@@ -314,6 +349,11 @@ def main():
         parser.error("Headless camera requires --max-frames")
     if not 0 < args.action_threshold <= 1:
         parser.error("--action-threshold must be in (0,1]")
+    if (args.action_interval <= 0 or args.action_window <= 0
+            or not 0 < args.action_min_samples <= args.action_window):
+        parser.error("Action interval/window must be positive and min-samples within the window")
+    if not 0 < args.action_consensus <= 1:
+        parser.error("--action-consensus must be in (0,1]")
     try:
         return run(args)
     except ImportError as exc:

@@ -15,6 +15,8 @@ class Config:
     away_seconds: float = 1.5
     max_gap_seconds: float = 0.75
     pitch_limit_degrees: float = 20.0
+    gaze_x_limit_ratio: float = 0.12
+    gaze_y_limit_ratio: float = 0.18
 
     def __post_init__(self):
         if not all(isfinite(v) for v in vars(self).values()):
@@ -27,6 +29,10 @@ class Config:
             raise ValueError("Yaw limit must be between 0 and 180")
         if not 0 < self.pitch_limit_degrees < 180:
             raise ValueError("Pitch limit must be between 0 and 180")
+        if not 0 < self.gaze_x_limit_ratio <= 1:
+            raise ValueError("Horizontal gaze limit must be in (0, 1]")
+        if not 0 < self.gaze_y_limit_ratio <= 1:
+            raise ValueError("Vertical gaze limit must be in (0, 1]")
 
 
 class StateEngine:
@@ -80,10 +86,21 @@ class StateEngine:
             not isfinite(f.pitch_degrees) or abs(f.pitch_degrees) > 180
         ):
             self._away_at = None
+        elif ((f.gaze_x_ratio is not None and (
+                not isfinite(f.gaze_x_ratio) or abs(f.gaze_x_ratio) > 1))
+              or (f.gaze_y_ratio is not None and (
+                  not isfinite(f.gaze_y_ratio) or abs(f.gaze_y_ratio) > 1))):
+            self._away_at = None
         elif (abs(f.yaw_degrees) > c.yaw_limit_degrees or (
-            f.pitch_degrees is not None and isfinite(f.pitch_degrees)
-            and abs(f.pitch_degrees) > c.pitch_limit_degrees
-        )):
+                f.pitch_degrees is not None and isfinite(f.pitch_degrees)
+                and abs(f.pitch_degrees) > c.pitch_limit_degrees
+              ) or (
+                f.gaze_x_ratio is not None
+                and abs(f.gaze_x_ratio) > c.gaze_x_limit_ratio
+              ) or (
+                f.gaze_y_ratio is not None
+                and abs(f.gaze_y_ratio) > c.gaze_y_limit_ratio
+              )):
             if self._away_at is None:
                 self._away_at = t
             # A turned head is pending until sustained; do not call it forward.

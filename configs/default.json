@@ -3,6 +3,9 @@
   "ear_open": 0.24,
   "closed_seconds": 1.5,
   "yaw_limit_degrees": 25.0,
+  "pitch_limit_degrees": 20.0,
+  "gaze_x_limit_ratio": 0.12,
+  "gaze_y_limit_ratio": 0.18,
   "away_seconds": 1.5,
   "max_gap_seconds": 0.75
 }

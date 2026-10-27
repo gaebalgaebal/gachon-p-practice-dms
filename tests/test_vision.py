@@ -26,6 +26,19 @@ class VisionTests(unittest.TestCase):
         self.assertAlmostEqual(pitch, 0)
         self.assertAlmostEqual(roll, 0)
 
+    def test_iris_position_uses_screen_coordinates_for_both_eyes(self):
+        import numpy as np
+        from dms.vision import iris_position
+        points = np.zeros((478, 2), dtype=float)
+        points[33], points[133] = (10, 10), (30, 10)
+        points[159], points[145], points[468] = (20, 6), (20, 14), (15, 12)
+        # Right-eye semantic corner order is reversed; screen normalization must not be.
+        points[362], points[263] = (70, 10), (50, 10)
+        points[386], points[374], points[473] = (60, 6), (60, 14), (55, 12)
+        x, y = iris_position(points)
+        self.assertAlmostEqual(x, .25)
+        self.assertAlmostEqual(y, .75)
+
     def test_blank_image_has_no_face(self):
         import os
         from pathlib import Path

@@ -40,6 +40,29 @@ def head_angles(matrix: np.ndarray) -> tuple[float, float, float] | None:
     return tuple(float(np.degrees(a)) for a in (yaw, pitch, roll))
 
 
+def iris_position(points: np.ndarray) -> tuple[float, float] | None:
+    """Mean screen-relative iris position, normalized inside both eye boxes."""
+    points = np.asarray(points, dtype=float)
+    if points.ndim != 2 or points.shape[0] < 478 or points.shape[1] != 2:
+        return None
+    if not np.isfinite(points[[33, 133, 159, 145, 362, 263, 386, 374, 468, 473]]).all():
+        return None
+    ratios = []
+    for iris, left, right, top, bottom in (
+        (468, 33, 133, 159, 145),
+        (473, 362, 263, 386, 374),
+    ):
+        x0, x1 = sorted((points[left, 0], points[right, 0]))
+        y0, y1 = sorted((points[top, 1], points[bottom, 1]))
+        if x1 - x0 < 2 or y1 - y0 < 1:
+            continue
+        ratios.append(((points[iris, 0] - x0) / (x1 - x0),
+                       (points[iris, 1] - y0) / (y1 - y0)))
+    if not ratios:
+        return None
+    return tuple(float(v) for v in np.mean(ratios, axis=0))
+
+
 @dataclass
 class Observation:
     valid: bool = False
@@ -52,6 +75,7 @@ class Observation:
     pitch: float | None = None
     roll: float | None = None
     iris_x: float | None = None
+    iris_y: float | None = None
     points: np.ndarray | None = None
 
 
@@ -100,18 +124,10 @@ class MediaPipeFaceAnalyzer:
         yaw, pitch, roll = angles
         if abs(yaw) > 65 or abs(pitch) > 55 or abs(roll) > 45:
             return Observation(reason="pose_out_of_range", face_count=count, points=points)
-        iris_x = None
-        if len(points) >= 478:
-            ratios = []
-            for iris, a, b in ((468, 33, 133), (473, 362, 263)):
-                edge = points[b] - points[a]
-                denom = float(edge @ edge)
-                if denom > 4:
-                    ratios.append(float((points[iris] - points[a]) @ edge / denom))
-            if ratios:
-                iris_x = float(np.mean(ratios))
+        iris = iris_position(points)
+        iris_x, iris_y = iris if iris is not None else (None, None)
         return Observation(True, "ok", count, (left + right) / 2, left, right,
-                           yaw, pitch, roll, iris_x, points)
+                           yaw, pitch, roll, iris_x, iris_y, points)
 
     def close(self):
         self.detector.close()

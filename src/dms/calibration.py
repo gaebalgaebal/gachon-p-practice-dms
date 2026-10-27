@@ -17,6 +17,8 @@ class Neutral:
     ear_open_median: float
     yaw: float
     pitch: float
+    iris_x: float | None = None
+    iris_y: float | None = None
 
     def config(self, original: Config) -> Config:
         return replace(original, ear_close=self.ear_open_median * .65,
@@ -34,7 +36,8 @@ class Calibrator:
         self.neutral = None
 
     def update(self, timestamp: float, ear: float | None, yaw: float | None,
-               pitch: float | None) -> Neutral | None:
+               pitch: float | None, iris_x: float | None = None,
+               iris_y: float | None = None) -> Neutral | None:
         if self.neutral:
             return self.neutral
         if any(v is None or not isfinite(v) for v in (timestamp, ear, yaw, pitch)):
@@ -46,14 +49,28 @@ class Calibrator:
         if self.samples and (timestamp - self.samples[-1][0] > self.max_gap
                              or timestamp <= self.samples[-1][0]):
             self.samples.clear()
-        self.samples.append((timestamp, ear, yaw, pitch))
+        self.samples.append((timestamp, ear, yaw, pitch, iris_x, iris_y))
         # Retain a rolling window so an early head turn cannot block calibration forever.
         while len(self.samples) > 1 and timestamp - self.samples[1][0] >= self.seconds:
             self.samples.pop(0)
         if len(self.samples) >= self.min_samples and timestamp - self.samples[0][0] >= self.seconds:
             values = list(zip(*self.samples))
             if pstdev(values[2]) < 5 and pstdev(values[3]) < 5 and pstdev(values[1]) < .04:
-                self.neutral = Neutral(median(values[1]), median(values[2]), median(values[3]))
+                iris_seen = any(v is not None and isfinite(v)
+                                for axis in values[4:6] for v in axis)
+                complete_x = all(v is not None and isfinite(v) for v in values[4])
+                complete_y = all(v is not None and isfinite(v) for v in values[5])
+                stable_x = complete_x and pstdev(values[4]) < .08
+                stable_y = complete_y and pstdev(values[5]) < .10
+                # If iris landmarks exist, require a steady forward gaze instead of
+                # silently locking a head-only baseline after eye movement.
+                if iris_seen and not (stable_x and stable_y):
+                    return None
+                self.neutral = Neutral(
+                    median(values[1]), median(values[2]), median(values[3]),
+                    median(values[4]) if stable_x else None,
+                    median(values[5]) if stable_y else None,
+                )
         return self.neutral
 
 
