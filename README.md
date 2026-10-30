@@ -89,3 +89,4 @@ python -m dms --input examples/synthetic_features.csv --output runs/synthetic.js
 
 # 의견 제시
 --> (함태은 10/27) : 졸음 운전 파악 방법에 하품이나 고개 변환 각도를 통해 조는 것을 파악하는 것도 좋을 것 같습니다.
+--> (양성우 10/27) : 가능하다면 일시적 고개 변환에서 네비게이션, 사이드미러 주시 등의 행동을 구분할 수 있어도 좋을 것 같습니다
