@@ -663,3 +663,18 @@ confidence 0.25의 높은 recall과 높은 오경보가 실제 웹캠에서도 �
 - README와 ROADMAP에서 인계 문서 연결
 
 코드·결과 요약·재현 문서만 Git에 게시하고 로컬 데이터와 실제 얼굴 산출물은 제외한다. 상세 인계: `docs/TEAM_HANDOFF.md`.
+
+## 단계 29. Windows 발표용 통합 데모 패키지
+
+**상태:** 스크립트·문서 완료, Windows PC 실기 확인 필요  
+**기록일:** 2026-11-10
+
+- 기존 얼굴·눈 기본 데모와 분리된 `setup_showcase.ps1` 추가
+- MediaPipe·OpenVINO·PyTorch·Ultralytics 설치와 공식 얼굴·눈 모델 다운로드 자동화
+- Ultralytics 설치 후 OpenCV contrib 빌드를 복구해 `cv2` 배포판 충돌 방지
+- `run_showcase.ps1`에서 3모델, 경고음, 녹화, 카메라·영상 입력, CPU/GPU 장치 선택 지원
+- 승인된 YOLO 체크포인트 존재 여부를 실행 전에 검사
+- 발표 순서, 기능 목록, 휴대폰 모델 한계, 가중치 전달 방법 문서화
+- Linux 회귀 테스트 90개 통과
+
+현재 저장소만으로 얼굴·눈 기본 Windows 데모는 실행할 수 있다. 전체 행동 쇼케이스는 Git 제외된 `aihub_abnormal_yolo11n.pt`를 Windows의 `models` 폴더에 별도 복사해야 한다. Linux 환경에는 PowerShell 실행기가 없어 구문·실기 최종 확인은 Windows PC에서 수행한다. 상세 절차: `docs/WINDOWS_SHOWCASE.md`.

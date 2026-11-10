@@ -53,6 +53,8 @@ Python **3.10~3.12 64비트** 권장. 저장소 루트에서:
 
 카메라가 여러 개라면 `./run_demo.ps1 -Camera 1`, 영상 파일은 `./run_demo.ps1 -Video 'C:/path/demo.mp4'`로 실행합니다. PowerShell에서 스크립트 실행이 제한되면 아래 Python 명령을 직접 사용하면 됩니다.
 
+MediaPipe·OpenVINO·YOLO11과 녹화·경고음까지 포함한 발표용 전체 데모는 [Windows 통합 데모 시연](docs/WINDOWS_SHOWCASE.md)을 참고해 `./setup_showcase.ps1`, `./run_showcase.ps1`을 사용합니다. YOLO 체크포인트는 재배포 조건 때문에 별도로 `models` 폴더에 복사해야 합니다.
+
 ```powershell
 python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -e '.[vision,eye]'
@@ -100,6 +102,7 @@ python scripts/validate_manifest.py examples/synthetic_dms_manifest.csv --profil
 
 - [현재 단계 최종 검증·모델 승인 상태](docs/FINAL_VALIDATION.md)
 - [팀원 인계 — 남은 현장 측정](docs/TEAM_HANDOFF.md)
+- [Windows 통합 데모 시연](docs/WINDOWS_SHOWCASE.md)
 - [실행·오류 해결·행동 학습·평가](docs/DEMO_GUIDE.md)
 - [확정 기획안과 구현 대응](docs/DEVELOPMENT.md)
 - [PPT 기준 확정 구현 계획](docs/IMPLEMENTATION_PLAN.md)
