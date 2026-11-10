@@ -16,6 +16,37 @@ class Event:
     end_s: float
 
 
+EMBEDDED_LABEL_TARGETS = {
+    "eyes_closed": ("drowsiness", "suspected"),
+    "away": ("attention", "off_forward"),
+    "yawn": ("yawn", "yawning"),
+    "phone": ("action", "phone"),
+}
+
+
+def embedded_truth_events(rows):
+    """Convert live.py ground_truth frame labels into event intervals."""
+    events = []
+    active_label = None
+    start = None
+    previous_t = None
+    for row in rows:
+        t = float(row["timestamp_s"])
+        label = row.get("ground_truth", "unknown")
+        if label != active_label:
+            if active_label in EMBEDDED_LABEL_TARGETS and start is not None and t > start:
+                task, target = EMBEDDED_LABEL_TARGETS[active_label]
+                events.append(Event(task, target, start, t))
+            active_label = label
+            start = t
+        previous_t = t
+    if (active_label in EMBEDDED_LABEL_TARGETS and start is not None
+            and previous_t is not None and previous_t > start):
+        task, target = EMBEDDED_LABEL_TARGETS[active_label]
+        events.append(Event(task, target, start, previous_t))
+    return events
+
+
 def predicted_events(rows, task, label):
     events = []
     start = None
@@ -107,7 +138,10 @@ def load_truth(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--predictions", type=Path, required=True)
-    parser.add_argument("--labels", type=Path, required=True)
+    labels = parser.add_mutually_exclusive_group(required=True)
+    labels.add_argument("--labels", type=Path)
+    labels.add_argument("--embedded-labels", action="store_true",
+                        help="Use ground_truth labels stored in the prediction JSONL")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--match-tolerance", type=float, default=.5)
     args = parser.parse_args()
@@ -117,7 +151,10 @@ def main():
         if args.match_tolerance < 0:
             raise ValueError("Match tolerance must be nonnegative")
         rows = [json.loads(line) for line in args.predictions.read_text(encoding="utf-8").splitlines()]
-        report = evaluate(rows, load_truth(args.labels), args.match_tolerance)
+        truth = embedded_truth_events(rows) if args.embedded_labels else load_truth(args.labels)
+        if not truth:
+            raise ValueError("No labeled events found")
+        report = evaluate(rows, truth, args.match_tolerance)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(f"Saved event-level evaluation to {args.output}")

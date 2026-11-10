@@ -11,6 +11,8 @@ import urllib.request
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=Path('runs/integration-smoke'))
+    parser.add_argument('--eye-model', type=Path,
+                        help='Optionally exercise OpenVINO eye-state inference')
     args = parser.parse_args()
     import cv2
     import numpy as np
@@ -40,14 +42,24 @@ def main():
     finally:
         writer.release()
     logs = args.output / 'demo'
-    subprocess.run([sys.executable, '-m', 'dms.live', '--video', str(video),
-                    '--headless', '--record', '--output', str(logs)], check=True)
+    command = [sys.executable, '-m', 'dms.live', '--video', str(video),
+               '--headless', '--record', '--output', str(logs)]
+    if args.eye_model:
+        command.extend(['--eye-model', str(args.eye_model)])
+    subprocess.run(command, check=True)
     rows = [json.loads(line) for line in (logs / 'frames.jsonl').read_text(encoding='utf-8').splitlines()]
     assert len(rows) == 120, f'Expected 120 frames, got {len(rows)}'
     assert any(row['calibrated'] and row['face_valid'] for row in rows[45:80]), 'Calibration never completed'
     assert all(row['drowsiness'] == 'unknown' and row['attention'] == 'unknown'
                for row in rows[85:100]), 'Blank frames did not become unknown'
     assert any(row['face_valid'] and row['drowsiness'] == 'normal' for row in rows[105:]), 'Face did not recover'
+    if args.eye_model:
+        assert any(row['eye_closed_score'] is not None for row in rows if row['face_valid']), (
+            'Eye model never produced scores'
+        )
+        assert all(row['eye_closed_score'] is None for row in rows[85:100]), (
+            'Blank frames retained eye scores'
+        )
     reader = cv2.VideoCapture(str(logs / 'annotated.mp4'))
     try:
         reader.set(cv2.CAP_PROP_POS_FRAMES, 65)

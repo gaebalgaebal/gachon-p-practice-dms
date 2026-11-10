@@ -1,9 +1,17 @@
-"""Optional task-trained MobileNetV3-Small adapter; no built-in action weights."""
+"""Task-trained MobileNet and YOLO11 action adapters."""
 
 from collections import Counter, deque
+from dataclasses import dataclass
 from pathlib import Path
 
 ALLOWED_ACTIONS = {"normal", "phone", "drink", "eat", "smoke"}
+
+
+@dataclass(frozen=True)
+class ActionDetection:
+    label: str
+    confidence: float
+    xyxy: tuple[float, float, float, float]
 
 
 class ActionSmoother:
@@ -44,6 +52,8 @@ class ActionSmoother:
 
 
 class MobileNetAction:
+    requires_face = True
+
     def __init__(self, checkpoint: Path, threshold: float = .7):
         import torch
         from torchvision.models import mobilenet_v3_small
@@ -81,3 +91,59 @@ class MobileNetAction:
         mapping = dict(zip(self.classes, scores))
         index = max(range(len(scores)), key=scores.__getitem__)
         return (self.classes[index] if scores[index] >= self.threshold else "unknown"), mapping
+
+
+class YOLOAction:
+    """Map AI Hub phone-use/call detections to the common DMS phone action."""
+
+    requires_face = False
+    SUPPORTED_CLASSES = {"phone_use", "phone_call"}
+
+    def __init__(self, checkpoint: Path, threshold: float = .5, device: str = "auto"):
+        from ultralytics import YOLO
+
+        if not checkpoint.is_file():
+            raise FileNotFoundError(checkpoint)
+        if not 0 < threshold <= 1:
+            raise ValueError("YOLO action threshold must be in (0,1]")
+        self.threshold = threshold
+        self.device = device
+        self.model = YOLO(str(checkpoint))
+        names = set(self.model.names.values())
+        if names != self.SUPPORTED_CLASSES:
+            raise ValueError(f"Expected YOLO classes {sorted(self.SUPPORTED_CLASSES)}, got {sorted(names)}")
+        self.last_detections: list[ActionDetection] = []
+
+    @staticmethod
+    def aggregate(detections: list[ActionDetection], threshold: float):
+        scores = {name: 0. for name in YOLOAction.SUPPORTED_CLASSES}
+        for detection in detections:
+            if detection.label in scores:
+                scores[detection.label] = max(scores[detection.label], detection.confidence)
+        phone_score = max(scores.values())
+        common_scores = {**scores, "phone": phone_score, "normal": 1. - phone_score}
+        return ("phone" if phone_score >= threshold else "normal"), common_scores
+
+    def predict(self, frame):
+        result = self.model.predict(
+            source=frame, conf=self.threshold, verbose=False,
+            device=None if self.device == "auto" else self.device,
+        )[0]
+        detections = []
+        if result.boxes is not None:
+            for class_id, confidence, coords in zip(
+                    result.boxes.cls.tolist(), result.boxes.conf.tolist(), result.boxes.xyxy.tolist()):
+                label = str(result.names[int(class_id)])
+                detections.append(ActionDetection(label, float(confidence), tuple(map(float, coords))))
+        self.last_detections = detections
+        return self.aggregate(detections, self.threshold)
+
+
+def load_action_model(checkpoint: Path, backend: str, threshold: float | None, device: str = "auto"):
+    if backend == "auto":
+        backend = "yolo11" if "yolo" in checkpoint.name.lower() else "mobilenet"
+    if backend == "yolo11":
+        return YOLOAction(checkpoint, .25 if threshold is None else threshold, device)
+    if backend == "mobilenet":
+        return MobileNetAction(checkpoint, .7 if threshold is None else threshold)
+    raise ValueError(f"Unsupported action backend: {backend}")

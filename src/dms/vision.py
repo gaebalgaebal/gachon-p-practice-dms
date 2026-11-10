@@ -9,6 +9,7 @@ import numpy as np
 
 LEFT_EYE = (33, 160, 158, 133, 153, 144)
 RIGHT_EYE = (362, 385, 387, 263, 373, 380)
+MOUTH = (61, 291, 81, 178, 13, 14, 311, 402)
 
 
 def eye_aspect_ratio(points: np.ndarray) -> float | None:
@@ -21,6 +22,18 @@ def eye_aspect_ratio(points: np.ndarray) -> float | None:
         return None
     return float((np.linalg.norm(points[1] - points[5])
                   + np.linalg.norm(points[2] - points[4])) / (2 * width))
+
+
+def mouth_aspect_ratio(points: np.ndarray) -> float | None:
+    """Eight pixel-space points: corners followed by three vertical pairs."""
+    points = np.asarray(points, dtype=float)
+    if points.shape != (8, 2) or not np.isfinite(points).all():
+        return None
+    width = np.linalg.norm(points[0] - points[1])
+    if width < 2:
+        return None
+    opening = sum(np.linalg.norm(points[i] - points[i + 1]) for i in (2, 4, 6))
+    return float(opening / (3 * width))
 
 
 def head_angles(matrix: np.ndarray) -> tuple[float, float, float] | None:
@@ -77,6 +90,7 @@ class Observation:
     iris_x: float | None = None
     iris_y: float | None = None
     points: np.ndarray | None = None
+    mar: float | None = None
 
 
 class MediaPipeFaceAnalyzer:
@@ -115,10 +129,11 @@ class MediaPipeFaceAnalyzer:
             return Observation(reason="face_too_small", face_count=count, points=points)
         left = eye_aspect_ratio(points[list(LEFT_EYE)])
         right = eye_aspect_ratio(points[list(RIGHT_EYE)])
+        mar = mouth_aspect_ratio(points[list(MOUTH)])
         angles = head_angles(result.facial_transformation_matrixes[0]) if (
             result.facial_transformation_matrixes
         ) else None
-        if left is None or right is None or angles is None:
+        if left is None or right is None or mar is None or angles is None:
             return Observation(reason="invalid_geometry", face_count=count, points=points)
         # Fail closed on severe pose; a 2D EAR is unreliable at large rotations.
         yaw, pitch, roll = angles
@@ -127,7 +142,7 @@ class MediaPipeFaceAnalyzer:
         iris = iris_position(points)
         iris_x, iris_y = iris if iris is not None else (None, None)
         return Observation(True, "ok", count, (left + right) / 2, left, right,
-                           yaw, pitch, roll, iris_x, iris_y, points)
+                           yaw, pitch, roll, iris_x, iris_y, points, mar)
 
     def close(self):
         self.detector.close()

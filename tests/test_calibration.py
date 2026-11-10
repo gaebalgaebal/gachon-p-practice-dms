@@ -1,6 +1,6 @@
 import unittest
 
-from dms.calibration import Calibrator, EyeHistory, angle_difference
+from dms.calibration import Calibrator, EyeHistory, EyeSignalHistory, angle_difference
 from dms.state import Config
 
 
@@ -57,3 +57,13 @@ class CalibrationTests(unittest.TestCase):
 
     def test_wrapped_angle(self):
         self.assertEqual(angle_difference(-179, 179), 2)
+
+    def test_eye_signal_history_window_and_reset(self):
+        history = EyeSignalHistory(window_seconds=1, max_gap=.75)
+        self.assertEqual(history.update(0, .3, .31), [(0, .3, .31)])
+        samples = history.update(.5, .2, .21)
+        self.assertEqual(len(samples), 2)
+        samples = history.update(1.2, .25, .26)
+        self.assertEqual([row[0] for row in samples], [.5, 1.2])
+        self.assertEqual(history.update(2.2, .3, .3), [(2.2, .3, .3)])
+        self.assertEqual(history.update(2.3, None, .3), [])

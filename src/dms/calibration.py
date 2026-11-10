@@ -100,3 +100,33 @@ class EyeHistory:
         observed = sum(end - max(start, cutoff) for start, end, _ in self.intervals)
         shut = sum(end - max(start, cutoff) for start, end, value in self.intervals if value)
         return (shut / observed if observed else None), observed / self.window_seconds
+
+
+class EyeSignalHistory:
+    """Recent left/right EAR samples for the live graph."""
+
+    def __init__(self, window_seconds: float = 10, max_gap: float = .75):
+        if window_seconds <= 0 or max_gap <= 0:
+            raise ValueError("Eye signal window and max gap must be positive")
+        self.window_seconds = window_seconds
+        self.max_gap = max_gap
+        self.samples = deque()
+
+    def reset(self):
+        self.samples.clear()
+
+    def update(self, t: float, left: float | None, right: float | None):
+        valid = (isfinite(t) and t >= 0 and left is not None and right is not None
+                 and isfinite(left) and isfinite(right)
+                 and 0 <= left <= 1 and 0 <= right <= 1)
+        if not valid:
+            self.reset()
+            return []
+        if self.samples and (t <= self.samples[-1][0]
+                             or t - self.samples[-1][0] > self.max_gap):
+            self.reset()
+        self.samples.append((t, float(left), float(right)))
+        cutoff = t - self.window_seconds
+        while self.samples and self.samples[0][0] < cutoff:
+            self.samples.popleft()
+        return list(self.samples)

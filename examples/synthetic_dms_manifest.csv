@@ -1,0 +1,4 @@
+sample_id,dataset,subject_id,session_id,file_path,frame_index,timestamp_s,task,label,split
+synthetic_eye_001,mrl_eye,subject_a,session_a,subject_a/open.png,0,0,eye_state,open,train
+synthetic_eye_002,mrl_eye,subject_b,session_b,subject_b/closed.png,0,0,eye_state,closed,val
+synthetic_eye_003,mrl_eye,subject_c,session_c,subject_c/open.png,0,0,eye_state,open,test

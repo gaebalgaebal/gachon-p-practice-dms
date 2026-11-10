@@ -1,0 +1,46 @@
+{
+  "initial": {
+    "mrl_eye": {
+      "tasks": ["eye_state"],
+      "modality": "IR eye images",
+      "access": "public dataset; verify current terms before use"
+    },
+    "aihub_drowsiness": {
+      "tasks": ["eye_state", "drowsiness", "head_pose"],
+      "modality": "RGB images and JSON labels",
+      "access": "AI Hub application and approval required"
+    },
+    "uta_rldd": {
+      "tasks": ["drowsiness"],
+      "modality": "RGB video",
+      "access": "research dataset; local Fold 1-4 subset"
+    },
+    "yawdd": {
+      "tasks": ["yawn"],
+      "modality": "RGB video",
+      "access": "IEEE DataPort account; yawn intervals require local annotation"
+    },
+    "state_farm": {
+      "tasks": ["action"],
+      "modality": "RGB images",
+      "access": "Kaggle competition rules acceptance required"
+    },
+    "aihub_abnormal": {
+      "tasks": ["action"],
+      "modality": "RGB video, images and JSON boxes",
+      "access": "AI Hub application and approval required"
+    }
+  },
+  "later": {
+    "dmd": {
+      "tasks": ["drowsiness", "head_pose", "attention", "action"],
+      "modality": "RGB, IR and depth video",
+      "access": "verify non-commercial and redistribution restrictions"
+    },
+    "drive_act": {
+      "tasks": ["action"],
+      "modality": "multi-view RGB, NIR, depth and 3D pose",
+      "access": "verify research-use terms before download"
+    }
+  }
+}

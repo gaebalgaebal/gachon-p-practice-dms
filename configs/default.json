@@ -6,6 +6,11 @@
   "pitch_limit_degrees": 20.0,
   "gaze_x_limit_ratio": 0.12,
   "gaze_y_limit_ratio": 0.18,
+  "mar_yawn": 0.35,
+  "mar_normal": 0.25,
+  "yawn_seconds": 0.8,
+  "eye_model_threshold": 0.70,
   "away_seconds": 1.5,
-  "max_gap_seconds": 0.75
+  "max_gap_seconds": 0.75,
+  "face_loss_grace_seconds": 2.0
 }

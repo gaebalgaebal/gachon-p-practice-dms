@@ -1,0 +1,56 @@
+{
+  "mrl_eye": {
+    "priority": 1,
+    "root": "data/raw/mrl_eye",
+    "access": "public_download",
+    "official_url": "https://mrl.cs.vsb.cz/eyedataset.html",
+    "ready_globs": ["**/s????_?????_?_?_?_?_?_??.png"],
+    "minimum_files": 80000,
+    "next_action": "공식 ZIP을 내려받아 압축을 해제한다. 공식 서버가 느리면 재시도하되 비공식 재가공본으로 대체하지 않는다."
+  },
+  "aihub_drowsiness": {
+    "priority": 2,
+    "root": "data/raw/aihub_drowsiness",
+    "access": "account_and_approval",
+    "official_url": "https://www.aihub.or.kr",
+    "ready_globs": ["**/*원천*.zip", "**/*라벨*.zip"],
+    "minimum_files": 12,
+    "next_action": "원천·라벨 ZIP을 같은 환경과 분할끼리 대응시켜 manifest로 변환한다."
+  },
+  "yawdd": {
+    "priority": 3,
+    "root": "data/raw/yawdd",
+    "access": "free_ieee_account",
+    "official_url": "https://ieee-dataport.org/open-access/yawdd-yawning-detection-dataset",
+    "ready_globs": ["**/*.avi"],
+    "minimum_files": 1,
+    "next_action": "무료 IEEE 계정으로 원본 영상을 다운로드한다. 이후 하품 시작·종료 구간은 직접 라벨링한다."
+  },
+  "uta_rldd": {
+    "priority": 4,
+    "root": "data/raw/uta_rldd",
+    "access": "local_fold_subset",
+    "official_url": "https://sites.google.com/view/utarldd/home",
+    "ready_globs": ["**/*.mp4", "**/*.MP4", "**/*.MOV", "**/*.mov", "**/*.m4v"],
+    "minimum_files": 144,
+    "next_action": "현재 Fold 1-4를 즉시 사용하거나 검증 완료된 Fold 5 ZIP을 추가 해제해 전체 60명으로 확장한다."
+  },
+  "state_farm": {
+    "priority": 5,
+    "root": "data/raw/state_farm",
+    "access": "kaggle_competition_rules",
+    "official_url": "https://www.kaggle.com/competitions/state-farm-distracted-driver-detection/data",
+    "ready_globs": ["**/driver_imgs_list.csv", "**/train/c0/*.jpg"],
+    "minimum_files": 2,
+    "next_action": "Kaggle 계정으로 대회 규칙에 동의한 뒤 competition 파일을 다운로드한다."
+  },
+  "aihub_abnormal": {
+    "priority": 6,
+    "root": "data/raw/aihub_abnormal",
+    "access": "account_and_approval",
+    "official_url": "https://www.aihub.or.kr/aihubdata/data/view.do?aihubDataSe=realm&dataSetSn=651",
+    "ready_globs": ["**/TS4.tar", "**/TL4.tar", "**/VS1.tar", "**/VL1.tar"],
+    "minimum_files": 4,
+    "next_action": "TS4/TL4 및 VS1/VL1 부분집합에서 휴대폰조작·통화 장면을 선별하고 State Farm 음료 클래스와 결합한다."
+  }
+}

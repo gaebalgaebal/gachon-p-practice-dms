@@ -43,6 +43,8 @@ python -m dms.live --video data/my_video.mp4 --headless --output runs/my-run
 
 로그에는 이미지나 랜드마크 전체를 저장하지 않습니다. 그래도 실제 사람의 행동·상태 기록이므로 저장·공유 범위를 관리하세요. 녹화는 처리 프레임을 소스 FPS로 기록하며 카메라에서 프레임 드롭이 있으면 실제 경과 시간과 재생 시간이 달라질 수 있습니다. 루프 시간은 센서/디스플레이 지연 측정이 아닙니다.
 
+실제 카메라 처리 속도가 장치 메타데이터 FPS보다 낮으면 `--record-fps 15`처럼 측정된 처리 FPS를 지정해 재생 시간을 맞춥니다. 지정하지 않으면 기존과 같이 입력 소스 FPS를 사용합니다.
+
 ## 선택적 행동 모델
 
 승인된 데이터에서 통화·음료 이미지를 준비한 후 실행합니다. 기본 데모에 해당 데이터나 완성 가중치는 없습니다.
@@ -72,6 +74,19 @@ MobileNetV3-Small ImageNet 특징망을 고정하고 분류기를 학습합니�
 
 `python scripts/action_smoke.py`는 무작위 픽셀로 학습 코드의 동작만 검사합니다. 생성 가중치는 smoke_only로 표시해 live에서 거부하며 실제 행동 인식 성능으로 보고하지 않습니다.
 
+AI Hub YOLO11 행동 모델은 다음처럼 선택한다. 얼굴이 가려진 순간에도 동작하도록 전체 ROI에서 독립적으로 실행하며, `phone_use`와 `phone_call` 박스는 공통 `phone` 상태로 집계한다.
+
+```bash
+python -m dms.live --camera 0 \
+  --eye-model models/open-closed-eye-0001.onnx \
+  --action-checkpoint models/aihub_abnormal_yolo11n.pt \
+  --action-backend yolo11 --action-interval 3
+```
+
+자동 노출 때문에 카메라 FPS가 낮아지는 장치에서는 저장 없이 밝기와 FPS를 먼저 확인한 뒤 장치별 수동 노출값을 지정할 수 있다. 현재 Linux 시험 카메라는 `--camera-exposure 120`에서 평균 밝기를 유지하며 약 28 FPS 원천 입력을 제공했다. 이 값은 카메라별 단위가 다르므로 다른 장치의 기본값으로 사용하지 않는다.
+
+YOLO confidence 기본값 0.25는 정지 프레임 validation의 F1 비교 기준이다. 후속 5프레임 검증에서는 정상 차량제어 클립 오경보가 100%여서 운영값으로 승인하지 않았다. 기본 5회 창·최소 3회·60% 시간 투표도 기술 데모 설정이며, 현재 YOLO 경고는 재학습 전 성능 시연 용도로만 사용한다. MobileNet 기본값은 기존 0.70을 유지한다.
+
 ## 프레임 평가
 
 수동 정답 CSV를 별도로 만들고 영상 프레임 번호를 맞춥니다.
@@ -89,6 +104,43 @@ python scripts/evaluate_states.py --predictions runs/my-run/frames.jsonl --label
 졸음 라벨은 normal/suspected, 주시는 forward/off_forward입니다. 빈 task 라벨은 미평가이고, 예측 unknown은 FN으로 반영합니다. 수동 라벨 자체가 실제 졸음 진단을 뜻하지 않습니다. 각성/저주의/졸음 3상태와의 매핑에는 별도 학습이 필요합니다.
 
 ## 이벤트 평가
+
+### 라이브 수동 라벨
+
+창이 표시되는 웹캠 실행에서는 다음 키로 현재 정답 동작을 전환할 수 있습니다.
+
+| 키 | 수동 정답 |
+|---|---|
+| `0` | normal |
+| `1` | eyes_closed |
+| `2` | away |
+| `3` | yawn |
+| `4` | phone |
+| `U` | unknown / 라벨 중지 |
+
+라벨은 `frames.jsonl`의 `ground_truth`와 `manual_labels.jsonl`의 변경 이벤트에 기록됩니다. 동작을 시작하는 순간 해당 숫자 키를 누르고 끝나는 순간 `0`을 누릅니다. 정답이 불확실하거나 실험을 중단하면 `U`를 사용합니다. 녹화를 켜지 않아도 라벨과 상태 수치만 저장됩니다.
+
+내장 라벨로 바로 이벤트 평가를 실행할 수 있습니다.
+
+```sh
+python scripts/evaluate_events.py \
+  --predictions runs/my-run/frames.jsonl \
+  --embedded-labels \
+  --output runs/my-run/event-evaluation.json
+```
+
+키 입력 없이 자동 라벨링하려면 JSON 시간표를 지정합니다. 구간은 겹칠 수 없으며 빈 구간은 `unknown`으로 기록됩니다.
+
+```json
+[
+  {"start_s": 0, "end_s": 6, "label": "normal"},
+  {"start_s": 6, "end_s": 21, "label": "phone"}
+]
+```
+
+```sh
+python -m dms.live --camera 0 --label-schedule configs/phone_webcam_scenario.json
+```
 
 정답 이벤트는 다음 스키마로 기록합니다.
 

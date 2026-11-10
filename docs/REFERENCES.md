@@ -1,21 +1,24 @@
 # 참고 자료와 출처
 
-범위·역할·일정의 기준은 팀이 제공한 확정 「AI P-실무프로젝트 과제 계획서 양식_미완1」입니다. 이번 v0.2가 해당 확정 내용을 우선 반영합니다. 원본 문서와 학번·연락처·비공개 멘토링 자료는 저장소에 넣지 않습니다.
+범위·데이터셋·모델의 기준은 `운전자감시카메라_프로젝트_4x3_20261030_1119.pptx`와 [DMS 확정 구현 계획](IMPLEMENTATION_PLAN.md)이다. 아래 링크는 접근·사용 허가가 완료되었다는 의미가 아니다.
 
-## 실제 구현에 사용
+## 모델
 
-- [MediaPipe Face Landmarker Python](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker/python): Tasks VIDEO API, 타임스탬프, 모델 옵션.
-- [Face Landmarker 개요·모델](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker/index): 얼굴 랜드마크·변환 행렬·다인 설정. 이 출력은 실제 gaze 정확도 보증이 아님.
-- [공식 version 1 모델](https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task): 로컬 다운로드, 해시 검증; Git 재배포 제외.
-- [공식 MediaPipe 테스트 이미지](https://storage.googleapis.com/mediapipe-assets/portrait.jpg): 통합 검사 입력, Git 재배포 제외. 운전자 데이터셋이 아님.
-- [Torchvision MobileNetV3-Small](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.mobilenet_v3_small.html): 선택적 전이학습·추론 아키텍처. ImageNet 가중치는 행동 인식 완성 모델이 아님.
-- [actions/checkout](https://github.com/actions/checkout), [actions/setup-python](https://github.com/actions/setup-python): CI 구성.
+- [MediaPipe Face Landmarker](https://developers.google.com/mediapipe/solutions/vision/face_landmarker): 얼굴·눈·입 랜드마크와 변환 행렬
+- [OpenVINO open-closed-eye-0001](https://docs.openvino.ai/nightly/omz_models_model_open_closed_eye_0001.html): 좌우 눈 개폐 분류
+- [Ultralytics YOLO11](https://docs.ultralytics.com/models/yolo11): 휴대폰·컵 검출과 행동 분류
+- [6DRepNet](https://github.com/thohemp/6DRepNet): 후반 Head Pose 비교 후보
+- [L2CS-Net](https://github.com/Ahmednull/L2CS-Net): 후반 gaze 확장 후보
 
-## 확정안의 데이터·연구 후보
+## 초기 데이터셋
 
-접근·사용 허가를 완료한 목록이 아닙니다.
+- [AI Hub](https://aihub.or.kr): 졸음운전 및 운전자·탑승자 이상행동 데이터
+- [NTHU-DDD 소개 논문](https://arxiv.org/abs/1910.09722): IR 졸음운전 영상
+- [YawDD](https://ieee-dataport.org/open-access/yawdd-yawning-detection-dataset): 하품 영상
+- [MRL Eye Dataset](http://mrl.cs.vsb.cz/eyedataset): 눈 뜸·감김 이미지
+- [State Farm Distracted Driver Detection](https://www.kaggle.com/competitions/state-farm-distracted-driver-detection/data): 주의분산 이미지
 
-- [UTA-RLDD](https://sites.google.com/view/utarldd/home)
-- [A Realistic Dataset and Baseline Temporal Model for Early Drowsiness Detection](https://arxiv.org/abs/1904.07312)
-- [State Farm Distracted Driver Detection](https://www.kaggle.com/competitions/state-farm-distracted-driver-detection/data)
-- [Driver Monitoring Dataset](https://dmd.vicomtech.org/)
+## 후반 데이터셋
+
+- [Driver Monitoring Dataset](https://dmd.vicomtech.org/): 종합 DMS
+- [Drive&Act](https://openaccess.thecvf.com/content_ICCV_2019/html/Martin_DriveAct_A_Multi-Modal_Dataset_for_Fine-Grained_Driver_Behavior_Recognition_in_ICCV_2019_paper.html): 다중 시점 세부 행동

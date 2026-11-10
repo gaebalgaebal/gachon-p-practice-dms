@@ -32,6 +32,26 @@ class EventMetricTests(unittest.TestCase):
         matches, missed, false_alarms = MODULE.match_events(target, guess, .25)
         self.assertEqual((len(matches), missed, false_alarms), (1, 0, 0))
 
+    def test_embedded_manual_labels_become_task_events(self):
+        rows = [
+            {"timestamp_s": 0, "ground_truth": "normal"},
+            {"timestamp_s": 1, "ground_truth": "eyes_closed"},
+            {"timestamp_s": 2, "ground_truth": "eyes_closed"},
+            {"timestamp_s": 3, "ground_truth": "normal"},
+            {"timestamp_s": 4, "ground_truth": "away"},
+            {"timestamp_s": 5, "ground_truth": "normal"},
+        ]
+        events = MODULE.embedded_truth_events(rows)
+        self.assertEqual(events, [
+            MODULE.Event("drowsiness", "suspected", 1, 3),
+            MODULE.Event("attention", "off_forward", 4, 5),
+        ])
+
+    def test_unknown_and_normal_embedded_labels_are_not_events(self):
+        rows = [{"timestamp_s": 0, "ground_truth": "unknown"},
+                {"timestamp_s": 1, "ground_truth": "normal"}]
+        self.assertEqual(MODULE.embedded_truth_events(rows), [])
+
 
 if __name__ == "__main__":
     unittest.main()

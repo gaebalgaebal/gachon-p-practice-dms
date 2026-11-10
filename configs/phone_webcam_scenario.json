@@ -1,0 +1,5 @@
+[
+  {"start_s": 0, "end_s": 6, "label": "normal"},
+  {"start_s": 6, "end_s": 21, "label": "phone"},
+  {"start_s": 21, "end_s": 27, "label": "normal"}
+]

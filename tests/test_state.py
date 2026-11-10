@@ -35,6 +35,26 @@ class StateTests(unittest.TestCase):
         self.assertEqual((state.drowsiness, state.attention), ("unknown", "unknown"))
         self.assertEqual(engine.update(Features(1, .15, 40)).drowsiness, "normal")
 
+    def test_brief_face_loss_preserves_started_attention_timer(self):
+        engine = StateEngine()
+        engine.update(Features(0, .3, 40))
+        self.assertEqual(engine.update(Features(.5, None, None, False)).attention, "unknown")
+        self.assertEqual(engine.update(Features(1.0, None, None, False)).attention, "unknown")
+        self.assertEqual(engine.update(Features(1.5, None, None, False)).attention,
+                         "off_forward")
+
+    def test_face_loss_does_not_infer_away_without_prior_head_deviation(self):
+        engine = StateEngine()
+        engine.update(Features(0, .3, 0))
+        self.assertEqual(engine.update(Features(1.5, None, None, False)).attention,
+                         "unknown")
+
+    def test_long_face_loss_expires_attention_tracking(self):
+        engine = StateEngine()
+        engine.update(Features(0, .3, 40))
+        self.assertEqual(engine.update(Features(2.1, None, None, False)).attention,
+                         "unknown")
+
     def test_gap_does_not_count_as_closed_time(self):
         engine = StateEngine()
         engine.update(Features(0, .15, 40))
@@ -64,6 +84,14 @@ class StateTests(unittest.TestCase):
             Config(ear_close=.3, ear_open=.2)
         with self.assertRaises(ValueError):
             Config(closed_seconds=-1)
+        with self.assertRaises(ValueError):
+            Config(eye_model_threshold=.5)
+        with self.assertRaises(ValueError):
+            Config(face_loss_grace_seconds=0)
+
+    def test_default_yawn_thresholds_match_yawdd_validation(self):
+        self.assertEqual((Config().mar_yawn, Config().mar_normal, Config().yawn_seconds),
+                         (.35, .25, .8))
 
     def test_pitch_detects_sustained_downward_head(self):
         engine = StateEngine()
@@ -93,3 +121,37 @@ class StateTests(unittest.TestCase):
         self.assertEqual(engine.update(Features(0, .3, 0, True, 0)).attention, "forward")
         self.assertEqual(engine.update(Features(.5, .3, 0, True, 0, math.nan, 0)).attention,
                          "unknown")
+
+    def test_sustained_yawn_and_recovery(self):
+        engine = StateEngine()
+        for t in [0, .4]:
+            state = engine.update(Features(t, .3, 0, mar=.6))
+            self.assertEqual(state.yawn, "normal")
+        self.assertEqual(engine.update(Features(.8, .3, 0, mar=.6)).yawn, "yawning")
+        self.assertEqual(engine.update(Features(1.0, .3, 0, mar=.2)).yawn, "normal")
+
+    def test_yawn_hysteresis_and_face_loss(self):
+        engine = StateEngine()
+        engine.update(Features(0, .3, 0, mar=.6))
+        engine.update(Features(.4, .3, 0, mar=.3))
+        self.assertEqual(engine.update(Features(.8, .3, 0, mar=.3)).yawn, "yawning")
+        self.assertEqual(engine.update(Features(1.0, None, None, False, mar=.6)).yawn,
+                         "unknown")
+        self.assertEqual(engine.update(Features(1.2, .3, 0, mar=.3)).yawn, "unknown")
+
+    def test_eye_model_agreement_allows_closed_eye_warning(self):
+        engine = StateEngine()
+        for t in [0, .5, 1, 1.5]:
+            state = engine.update(Features(t, .15, 0, eye_closed_score=.9,
+                                           eye_model_active=True))
+        self.assertEqual((state.eye, state.drowsiness), ("closed", "suspected"))
+
+    def test_eye_model_disagreement_is_uncertain(self):
+        state = StateEngine().update(Features(0, .15, 0, eye_closed_score=.05,
+                                              eye_model_active=True))
+        self.assertEqual((state.eye, state.drowsiness), ("uncertain", "unknown"))
+
+    def test_eye_model_low_confidence_is_uncertain(self):
+        state = StateEngine().update(Features(0, .3, 0, eye_closed_score=.5,
+                                              eye_model_active=True))
+        self.assertEqual((state.eye, state.drowsiness), ("uncertain", "unknown"))

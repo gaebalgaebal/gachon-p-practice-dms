@@ -48,7 +48,13 @@ def train(args):
         hashes[digest] = row['split']
     random.seed(args.seed)
     torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
     torch.set_num_threads(args.threads)
+    device_name = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+    if device_name == "cuda" and not torch.cuda.is_available():
+        raise ValueError("CUDA was requested but is not available")
+    device = torch.device(device_name)
     normalize = transforms.Normalize([.485, .456, .406], [.229, .224, .225])
     eval_transform = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224),
                                          transforms.ToTensor(), normalize])
@@ -71,7 +77,8 @@ def train(args):
     if len(datasets['train']) < 2:
         raise ValueError("Training requires at least two images")
     loaders = {split: DataLoader(dataset, batch_size=args.batch_size,
-                                 shuffle=split == 'train', num_workers=0)
+                                 shuffle=split == 'train', num_workers=args.workers,
+                                 pin_memory=device.type == 'cuda')
                for split, dataset in datasets.items()}
     model = mobilenet_v3_small(weights=None if args.from_scratch else
                                MobileNet_V3_Small_Weights.IMAGENET1K_V1)
@@ -79,8 +86,15 @@ def train(args):
     for parameter in model.features.parameters():
         parameter.requires_grad = False
     model.classifier[-1] = torch.nn.Linear(model.classifier[-1].in_features, len(classes))
+    model.to(device)
     optimizer = torch.optim.AdamW(model.classifier.parameters(), lr=args.learning_rate)
-    criterion = torch.nn.CrossEntropyLoss()
+    train_counts = {label: sum(row['split'] == 'train' and row['label'] == label for row in rows)
+                    for label in classes}
+    class_weights = torch.tensor(
+        [len(datasets['train']) / (len(classes) * train_counts[label]) for label in classes],
+        dtype=torch.float32, device=device,
+    )
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
     steps, best_f1, history = 0, -1., []
     args.output.parent.mkdir(parents=True, exist_ok=True)
     def evaluate(split):
@@ -88,6 +102,8 @@ def train(args):
         actual, predicted = [], []
         with torch.inference_mode():
             for images, labels in loaders[split]:
+                images = images.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
                 guess = model(images).argmax(dim=1)
                 actual.extend(classes[i] for i in labels.tolist())
                 predicted.extend(classes[i] for i in guess.tolist())
@@ -97,6 +113,8 @@ def train(args):
         model.features.eval()
         total_loss = 0.
         for images, labels in loaders['train']:
+            images = images.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
             optimizer.zero_grad()
             loss = criterion(model(images), labels)
             loss.backward()
@@ -110,7 +128,9 @@ def train(args):
         if report['macro_f1'] > best_f1:
             best_f1 = report['macro_f1']
             torch.save({'architecture': 'mobilenet_v3_small', 'classes': classes,
-                        'state_dict': model.state_dict(), 'trained_steps': steps,
+                        'state_dict': {key: value.detach().cpu()
+                                       for key, value in model.state_dict().items()},
+                        'trained_steps': steps,
                         'preprocessing': 'resize256_center224_imagenet',
                         'smoke_only': args.smoke_only, 'seed': args.seed,
                         'manifest_sha256': hashlib.sha256(args.manifest.read_bytes()).hexdigest()},
@@ -122,6 +142,8 @@ def train(args):
                'torch': str(torch.__version__), 'epochs': args.epochs, 'batch_size': args.batch_size,
                'learning_rate': args.learning_rate, 'from_scratch': args.from_scratch,
                'smoke_only': args.smoke_only, 'classes': classes,
+               'device': str(device), 'workers': args.workers,
+               'class_weights': dict(zip(classes, class_weights.detach().cpu().tolist())),
                'samples': {split: len(data) for split, data in datasets.items()},
                'checkpoint_sha256': hashlib.sha256(args.output.read_bytes()).hexdigest(),
                'manifest_sha256': payload['manifest_sha256']}
@@ -138,11 +160,13 @@ def main():
     parser.add_argument('--learning-rate', type=float, default=.001)
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--threads', type=int, default=4)
+    parser.add_argument('--workers', type=int, default=4)
+    parser.add_argument('--device', choices=('auto', 'cpu', 'cuda'), default='auto')
     parser.add_argument('--from-scratch', action='store_true')
     parser.add_argument('--smoke-only', action='store_true', help='Mark synthetic test weights unusable in live demo')
     args = parser.parse_args()
-    if min(args.epochs, args.batch_size, args.threads) <= 0 or not 0 < args.learning_rate < 1:
-        parser.error('epochs/batch-size/threads must be positive and learning-rate in (0,1)')
+    if min(args.epochs, args.batch_size, args.threads) <= 0 or args.workers < 0 or not 0 < args.learning_rate < 1:
+        parser.error('epochs/batch-size/threads must be positive, workers nonnegative, and learning-rate in (0,1)')
     try:
         train(args)
     except (OSError, ValueError, RuntimeError, ImportError) as exc:

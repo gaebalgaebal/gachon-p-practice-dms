@@ -5,8 +5,8 @@ if (-not (Test-Path -LiteralPath './.venv/Scripts/python.exe')) {
     throw 'Run ./setup_demo.ps1 first.'
 }
 if ($Video) {
-    & ./.venv/Scripts/python.exe -m dms.live --video $Video
+    & ./.venv/Scripts/python.exe -m dms.live --video $Video --eye-model models/open_closed_eye.onnx
 } else {
-    & ./.venv/Scripts/python.exe -m dms.live --camera $Camera
+    & ./.venv/Scripts/python.exe -m dms.live --camera $Camera --eye-model models/open_closed_eye.onnx
 }
 if ($LASTEXITCODE -ne 0) { throw 'Demo exited with an error. See the message above.' }

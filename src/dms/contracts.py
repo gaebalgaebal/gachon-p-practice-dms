@@ -16,6 +16,9 @@ class Features:
     pitch_degrees: float | None = None
     gaze_x_ratio: float | None = None
     gaze_y_ratio: float | None = None
+    mar: float | None = None
+    eye_closed_score: float | None = None
+    eye_model_active: bool = False
 
 
 @dataclass(frozen=True)
@@ -25,6 +28,8 @@ class DriverState:
     attention: str
     action: str = "unknown"
     source: str = "feature_rules_v0"
+    yawn: str = "unknown"
+    eye: str = "unknown"
 
 
 class FaceAnalyzer(Protocol):

@@ -1,6 +1,6 @@
 import unittest
 
-from dms.action import ActionSmoother
+from dms.action import ActionDetection, ActionSmoother, YOLOAction, load_action_model
 
 
 class ActionSmootherTests(unittest.TestCase):
@@ -26,6 +26,29 @@ class ActionSmootherTests(unittest.TestCase):
             ActionSmoother(window=2, min_samples=3)
         with self.assertRaises(ValueError):
             ActionSmoother().update("texting", {})
+
+
+class YOLOActionTests(unittest.TestCase):
+    def test_aggregate_maps_source_classes_to_phone(self):
+        label, scores = YOLOAction.aggregate(
+            [ActionDetection("phone_call", .82, (1., 2., 3., 4.))], .5)
+        self.assertEqual(label, "phone")
+        self.assertAlmostEqual(scores["phone"], .82)
+        self.assertAlmostEqual(scores["normal"], .18)
+
+    def test_empty_detections_are_normal(self):
+        label, scores = YOLOAction.aggregate([], .5)
+        self.assertEqual(label, "normal")
+        self.assertEqual(scores["phone"], 0.)
+
+    def test_backend_defaults_are_separate(self):
+        from unittest.mock import patch
+        with patch("dms.action.YOLOAction") as yolo:
+            load_action_model(__import__("pathlib").Path("model.pt"), "yolo11", None)
+            self.assertEqual(yolo.call_args.args[1], .25)
+        with patch("dms.action.MobileNetAction") as mobilenet:
+            load_action_model(__import__("pathlib").Path("model.pt"), "mobilenet", None)
+            self.assertEqual(mobilenet.call_args.args[1], .7)
 
 
 if __name__ == "__main__":

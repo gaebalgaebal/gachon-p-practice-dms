@@ -14,6 +14,16 @@ class VisionTests(unittest.TestCase):
                                          (3, 0), (1, 0)]), 0)
         self.assertIsNone(eye_aspect_ratio([(0, 0)] * 6))
 
+    def test_mar_open_and_closed(self):
+        from dms.vision import mouth_aspect_ratio
+        open_mouth = [(0, 0), (6, 0), (1, 1.5), (1, -1.5),
+                      (3, 1.5), (3, -1.5), (5, 1.5), (5, -1.5)]
+        closed_mouth = [(0, 0), (6, 0), (1, 0), (1, 0),
+                        (3, 0), (3, 0), (5, 0), (5, 0)]
+        self.assertAlmostEqual(mouth_aspect_ratio(open_mouth), .5)
+        self.assertEqual(mouth_aspect_ratio(closed_mouth), 0)
+        self.assertIsNone(mouth_aspect_ratio([(0, 0)] * 8))
+
     def test_rotation_convention(self):
         import numpy as np
         from dms.vision import head_angles
