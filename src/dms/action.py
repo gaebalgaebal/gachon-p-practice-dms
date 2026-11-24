@@ -2,6 +2,7 @@
 
 from collections import Counter, deque
 from dataclasses import dataclass
+import json
 from pathlib import Path
 
 ALLOWED_ACTIONS = {"normal", "phone", "drink", "eat", "smoke"}
@@ -139,11 +140,59 @@ class YOLOAction:
         return self.aggregate(detections, self.threshold)
 
 
+class OpenVINOAction:
+    """Run an exported MobileNetV3 action classifier through OpenVINO."""
+
+    requires_face = True
+
+    def __init__(self, checkpoint: Path, threshold: float = .7, device: str = "AUTO"):
+        import openvino as ov
+        from torchvision import transforms
+
+        metadata_path = checkpoint.with_suffix(checkpoint.suffix + ".metadata.json")
+        if not checkpoint.is_file() or not metadata_path.is_file():
+            raise FileNotFoundError(f"Require ONNX and metadata sidecar: {checkpoint}")
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        self.classes = metadata.get("classes")
+        if (metadata.get("architecture") != "mobilenet_v3_small"
+                or metadata.get("preprocessing") != "resize256_center224_imagenet"
+                or not isinstance(self.classes, list) or len(self.classes) < 2
+                or len(set(self.classes)) != len(self.classes)
+                or not set(self.classes).issubset(ALLOWED_ACTIONS)):
+            raise ValueError("Unsupported OpenVINO action metadata")
+        if not 0 < threshold <= 1:
+            raise ValueError("OpenVINO action threshold must be in (0,1]")
+        self.threshold = threshold
+        self.model = ov.Core().compile_model(str(checkpoint), device)
+        self.output = self.model.output(0)
+        self.transform = transforms.Compose([
+            transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(),
+            transforms.Normalize([.485, .456, .406], [.229, .224, .225]),
+        ])
+
+    def predict(self, frame):
+        import cv2
+        import numpy as np
+        from PIL import Image
+
+        image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        logits = self.model([self.transform(image).unsqueeze(0).numpy()])[self.output][0]
+        shifted = logits - logits.max()
+        scores = np.exp(shifted) / np.exp(shifted).sum()
+        mapping = dict(zip(self.classes, map(float, scores)))
+        index = int(scores.argmax())
+        return (self.classes[index] if scores[index] >= self.threshold else "unknown"), mapping
+
+
 def load_action_model(checkpoint: Path, backend: str, threshold: float | None, device: str = "auto"):
     if backend == "auto":
-        backend = "yolo11" if "yolo" in checkpoint.name.lower() else "mobilenet"
+        backend = ("openvino" if checkpoint.suffix.lower() == ".onnx" else
+                   "yolo11" if "yolo" in checkpoint.name.lower() else "mobilenet")
     if backend == "yolo11":
         return YOLOAction(checkpoint, .25 if threshold is None else threshold, device)
     if backend == "mobilenet":
         return MobileNetAction(checkpoint, .7 if threshold is None else threshold)
+    if backend == "openvino":
+        ov_device = "AUTO" if device == "auto" else device.upper()
+        return OpenVINOAction(checkpoint, .7 if threshold is None else threshold, ov_device)
     raise ValueError(f"Unsupported action backend: {backend}")

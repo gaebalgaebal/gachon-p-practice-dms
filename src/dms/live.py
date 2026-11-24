@@ -666,7 +666,8 @@ def main():
                         help="JSON intervals for focus-independent ground-truth labels")
     parser.add_argument("--sound", action="store_true", help="Opt in to Windows warning sound")
     parser.add_argument("--action-checkpoint", type=Path)
-    parser.add_argument("--action-backend", choices=("auto", "mobilenet", "yolo11"), default="auto")
+    parser.add_argument("--action-backend", choices=("auto", "mobilenet", "openvino", "yolo11"),
+                        default="auto")
     parser.add_argument("--action-device", default="auto", help="YOLO device: auto, cpu, or CUDA index")
     parser.add_argument("--action-threshold", type=float,
                         help="Override confidence; defaults: MobileNet 0.70, YOLO11 0.25")

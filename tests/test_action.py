@@ -1,4 +1,6 @@
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from dms.action import ActionDetection, ActionSmoother, YOLOAction, load_action_model
 
@@ -40,6 +42,12 @@ class YOLOActionTests(unittest.TestCase):
         label, scores = YOLOAction.aggregate([], .5)
         self.assertEqual(label, "normal")
         self.assertEqual(scores["phone"], 0.)
+
+    @patch("dms.action.OpenVINOAction")
+    def test_auto_selects_openvino_for_onnx(self, openvino):
+        checkpoint = Path("action.onnx")
+        load_action_model(checkpoint, "auto", .6, "cpu")
+        openvino.assert_called_once_with(checkpoint, .6, "CPU")
 
     def test_backend_defaults_are_separate(self):
         from unittest.mock import patch

@@ -76,6 +76,7 @@ CPU 강제 실행:
 
 - 휴대폰 모델은 confidence 0.75에서 미탐이 크고 0.25에서 오경보가 과도하다. 기본 showcase는 0.75를 사용하며 운영 기능으로 설명하지 않는다.
 - 음료 행동은 State Farm 데이터 기준선만 있고 현재 YOLO 체크포인트의 클래스가 아니다.
+- State Farm ONNX/OpenVINO 경로는 변환 동일성 검증용이다. 근거리 휴대폰 운영 모델로 설명하지 않는다.
 - `--camera-exposure 120`은 Linux 시험 카메라 전용이므로 Windows 스크립트에서는 사용하지 않는다.
 - Windows PC 성능이 다르므로 15 FPS는 해당 PC에서 다시 측정해야 한다.
 - 얼굴 영상과 `runs` 출력은 Git에 올리지 않는다.

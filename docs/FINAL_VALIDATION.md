@@ -60,7 +60,7 @@
 ## 남은 작업
 
 1. 구현된 `--record-raw`와 `prepare_webcam_action.py`로 최소 3명 이상의 근거리 normal/phone 데이터를 수집하고 행동 모델을 재학습한다.
-2. YOLO ONNX/TensorRT 변환은 운영 후보 모델이 기준을 통과한 뒤 수행한다. 현재 부정확한 모델을 최적화하지 않는다.
+2. State Farm 분류 기준선의 ONNX/OpenVINO 실행 경로는 검증됐다. 운영 행동 모델은 재학습 승인 후 같은 절차로 교체한다.
 3. Windows 새 환경에서 설치·카메라·경고음·녹화까지 최종 smoke test를 수행한다.
 4. 환경 수치를 제품 일반화 지표로 사용할 경우 피험자와 반복 횟수를 늘린다.
 5. UTA-RLDD·AI Hub 졸음 전체 시간 모델과 DMD·Drive&Act·L2CS-Net·6DRepNet은 종합 DMS 후반 단계로 유지한다.

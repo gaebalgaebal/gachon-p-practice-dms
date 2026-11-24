@@ -709,3 +709,20 @@ confidence 0.25의 높은 recall과 높은 오경보가 실제 웹캠에서도 �
 - 데이터 준비 단위 테스트 3개 추가, 전체 회귀 테스트 93개 통과
 
 AI Hub 몸 전체 행동 박스의 의미를 억지로 휴대폰 물체 박스로 바꾸지 않고, 실제 데모 구도에 맞는 분류 데이터를 별도로 추가하는 경로를 선택했다. 다음 작업은 팀원 최소 3명 이상을 분리 촬영한 뒤 기존 State Farm 기준선과 같은 test 피험자 기준으로 비교하는 것이다.
+
+## 단계 32. 결과표 확정과 행동 모델 ONNX 실행 경로
+
+**상태:** 완료
+**기록일:** 2026-11-24
+
+- MRL Eye, State Farm, AI Hub 이상행동, 웹캠 이벤트, 통합 성능 결과를 단일 표로 정리
+- MobileNetV3 행동 체크포인트의 ONNX opset 17 변환 도구 추가
+- 클래스·전처리·원본 및 변환 모델 해시를 metadata sidecar에 저장
+- ONNX 파일을 자동 감지하는 OpenVINO 행동 runtime 추가
+- State Farm test 이미지 100장에서 PyTorch/OpenVINO 클래스 일치율 100% 확인
+- 최대 확률 절대 오차 0.00000906 확인
+- CPU 순차 평균 PyTorch 3.91ms, OpenVINO 2.67ms 측정
+- 얼굴·눈·행동 ONNX 통합 파일 입력 smoke 30프레임, 32.85 processing FPS 정상 종료
+- 전체 회귀 테스트 94개 통과
+
+현재 변환 모델은 실행 경로 검증용 State Farm 기준선이다. 팀원 촬영 데이터로 새 행동 모델이 승인되면 같은 변환·교차 검증 절차로 최종 모델을 교체한다. 상세 결과: `docs/results/ACTION_ONNX.md`.
