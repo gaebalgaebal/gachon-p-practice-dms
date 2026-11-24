@@ -67,6 +67,26 @@ kaggle competitions download -c state-farm-distracted-driver-detection \
 - 전체 데이터보다 휴대폰 조작·통화·음료 행동의 JPG·JSON 바운딩박스를 먼저 받는다.
 - 현재 공식 페이지의 공개 버전은 1.2이며, 로컬 기록에 다운로드 버전과 날짜를 남긴다.
 
+### 휴대폰 개선용 자체 웹캠 데이터
+
+기존 AI Hub 라벨은 휴대폰 물체가 아닌 몸 전체 행동 박스이므로 근거리 웹캠에서 오경보가 많다. 팀원 동의를 받은 원본 영상을 `--record-raw`로 수집하고, 화면 주석이 들어간 `annotated.mp4`는 학습에 사용하지 않는다.
+
+```bash
+python -m dms.live --camera 0 --label-schedule configs/phone_webcam_scenario.json \
+  --record-raw --record-fps 15 --max-frames 405 --output runs/p01_front
+```
+
+최소 3명의 피험자를 train/val/test에 각각 완전히 분리한다. 실제 개선 실험에는 각 split에 normal과 phone이 모두 있어야 하며, 같은 사람을 파일명만 바꿔 여러 split에 넣지 않는다. `configs/webcam_action_sessions.example.json`을 복사해 실제 세션을 등록한 뒤 깨끗한 프레임과 manifest를 만든다.
+
+```bash
+python scripts/prepare_webcam_action.py configs/webcam_action_sessions.json \
+  --sample-fps 2
+python scripts/train_action.py --manifest data/manifests/webcam_action.csv \
+  --output models/webcam_action_mobilenet_v3.pt --epochs 10
+```
+
+원본 영상과 추출 얼굴 이미지는 Git에 올리지 않는다. 촬영 동의, 보관 기간, 접근자를 `data/licenses/webcam_action.md`에 기록하고 모델 평가는 반드시 보지 않은 test 피험자로 수행한다.
+
 ## 3. 각 데이터셋 반입 시 기록
 
 `data/licenses/<dataset_id>.md`에 다음 항목을 작성한다.

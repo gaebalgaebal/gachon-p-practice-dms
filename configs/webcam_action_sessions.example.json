@@ -1,0 +1,23 @@
+[
+  {
+    "subject_id": "p01",
+    "session_id": "p01_front",
+    "split": "train",
+    "video": "../runs/p01_front/raw.mp4",
+    "schedule": "phone_webcam_scenario.json"
+  },
+  {
+    "subject_id": "p02",
+    "session_id": "p02_front",
+    "split": "val",
+    "video": "../runs/p02_front/raw.mp4",
+    "schedule": "phone_webcam_scenario.json"
+  },
+  {
+    "subject_id": "p03",
+    "session_id": "p03_front",
+    "split": "test",
+    "video": "../runs/p03_front/raw.mp4",
+    "schedule": "phone_webcam_scenario.json"
+  }
+]

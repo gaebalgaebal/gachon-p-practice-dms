@@ -42,6 +42,8 @@
 
 현재 베이스라인의 졸음 출력은 normal/suspected/unknown입니다. 전방 주시는 **보정된 얼굴 방향과 홍채 상대 위치를 결합한 프록시**이며 실제 시선 벡터가 아닙니다. YOLO11 행동 인식은 휴대폰 사용·통화 행동 영역을 `phone` 상태로 통합하며 시간 투표 후 경고합니다.
 
+휴대폰 웹캠 도메인 개선용 데이터는 `--record-raw`로 오버레이 없는 영상을 수집하고 `scripts/prepare_webcam_action.py`로 피험자 분리 manifest를 생성합니다. 자세한 절차는 [데이터셋 선행 준비 체크리스트](docs/DATASET_SETUP.md)를 참고합니다.
+
 ## Windows 빠른 실행
 
 Python **3.10~3.12 64비트** 권장. 저장소 루트에서:

@@ -29,6 +29,11 @@
       "tasks": ["action"],
       "modality": "RGB video, images and JSON boxes",
       "access": "AI Hub application and approval required"
+    },
+    "webcam_action": {
+      "tasks": ["action"],
+      "modality": "locally consented RGB webcam video",
+      "access": "team-collected; obtain participant consent and restrict raw video access"
     }
   },
   "later": {

@@ -253,6 +253,7 @@ def run(args):
     analyzer = MediaPipeFaceAnalyzer(args.model)
     cap = None
     writer = None
+    raw_writer = None
     frames_log = events_log = labels_log = None
     latencies, completion_times, unknown, frame_count = [], [], 0, 0
     started = time.perf_counter()
@@ -424,6 +425,15 @@ def run(args):
             elapsed = time.perf_counter() - started
             fps = frame_count / max(elapsed, 1e-6)
             canvas = render(frame, observation, state, info, (x, y, cw, ch), fps, eye_trace)
+            if args.record_raw:
+                if raw_writer is None:
+                    record_fps = args.record_fps or source_fps
+                    raw_writer = cv2.VideoWriter(str(args.output / "raw.mp4"),
+                                                 cv2.VideoWriter_fourcc(*"mp4v"), record_fps,
+                                                 (frame.shape[1], frame.shape[0]))
+                    if not raw_writer.isOpened():
+                        raise RuntimeError("Cannot create raw video; try without --record-raw")
+                raw_writer.write(frame)
             if args.record:
                 if writer is None:
                     record_fps = args.record_fps or source_fps
@@ -510,6 +520,8 @@ def run(args):
             cap.release()
         if writer is not None:
             writer.release()
+        if raw_writer is not None:
+            raw_writer.release()
         if not args.headless:
             cv2.destroyAllWindows()
         if frames_log:
@@ -576,7 +588,9 @@ def run(args):
                        "config": asdict(config), "effective_config": asdict(engine.config),
                        "calibrated": calibration.neutral is not None,
                        "roi": args.roi, "recorded": args.record,
-                       "record_fps": (args.record_fps or source_fps) if args.record else None,
+                       "raw_recorded": args.record_raw,
+                       "record_fps": (args.record_fps or source_fps)
+                           if args.record or args.record_raw else None,
                        "camera_fps_requested": args.camera_fps if not args.video else None,
                        "camera_exposure_requested": args.camera_exposure if not args.video else None,
                        "camera_frames_skipped": cap.dropped_frames
@@ -644,6 +658,8 @@ def main():
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--max-frames", type=int)
     parser.add_argument("--record", action="store_true", help="Opt in to local annotated video storage")
+    parser.add_argument("--record-raw", action="store_true",
+                        help="Opt in to clean video storage for consented dataset collection")
     parser.add_argument("--record-fps", type=float,
                         help="Output video FPS; use measured processing FPS for real-time playback")
     parser.add_argument("--label-schedule", type=Path,
