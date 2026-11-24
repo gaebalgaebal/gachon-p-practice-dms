@@ -678,3 +678,18 @@ confidence 0.25의 높은 recall과 높은 오경보가 실제 웹캠에서도 �
 - Linux 회귀 테스트 90개 통과
 
 현재 저장소만으로 얼굴·눈 기본 Windows 데모는 실행할 수 있다. 전체 행동 쇼케이스는 Git 제외된 `aihub_abnormal_yolo11n.pt`를 Windows의 `models` 폴더에 별도 복사해야 한다. Linux 환경에는 PowerShell 실행기가 없어 구문·실기 최종 확인은 Windows PC에서 수행한다. 상세 절차: `docs/WINDOWS_SHOWCASE.md`.
+
+## 단계 30. TalkFile Windows 환경 검증 결과 반영
+
+**상태:** 9조건 1차 검증 완료
+**기록일:** 2026-11-24
+
+- 최신 결과 패키지 SHA-256을 확인하고 이전 패키지와 구분
+- Windows 11, 640×480, 조건별 300프레임씩 총 2,700프레임 결과 반영
+- baseline·안경·가림·역광·저조도·카메라 상하좌우 9조건 완료
+- 얼굴 검출은 전 조건 100%였으나 역광·좌·우에서 보정 실패와 any-unknown 100% 확인
+- camera_low도 any-unknown 86.33%로 취약 조건 확인
+- 모델 해시와 실행 파라미터가 모든 조건에서 동일함을 확인
+- 원본 ZIP과 프레임 로그는 Git에서 제외하고 집계 수치와 제한사항만 기록
+
+단일 피험자·조건별 1회 결과이므로 환경 검증을 제품 일반화 성능으로 확정하지 않는다. 환경 1차 검증은 완료 처리하고 다인원 반복은 팀원 후속 검증으로 분리한다. 상세 결과: `docs/results/ENVIRONMENT_CONDITIONS.md`.

@@ -33,3 +33,4 @@ artifacts/
 .~lock.*
 .DS_Store
 Thumbs.db
+TalkFile_DMS_Validation_Results*.zip*
