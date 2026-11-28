@@ -4,6 +4,17 @@
 
 개발의 단일 기준은 [PPT 기준 확정 구현 계획](docs/IMPLEMENTATION_PLAN.md)입니다. 목표는 MediaPipe Face Landmarker, OpenVINO 눈 개폐 모델, YOLO11을 함께 사용하는 PC·웹캠 실시간 DMS입니다.
 
+## Windows 데스크톱 제품
+
+`v0.4`는 카메라 선택, 사용자 보정, 실시간 모니터링, 세션 결과와 진단 리포트를 제공하는 PySide6 데스크톱 앱을 포함합니다. 기본 실행에서는 영상을 저장하지 않으며 이벤트 요약만 `%LOCALAPPDATA%/GachonDMS`에 기록합니다.
+
+```bash
+python -m pip install -e '.[vision,eye,desktop]'
+python -m dms.desktop
+```
+
+Windows 오프라인 설치본 빌드와 사용자 절차는 [배포 빌드](docs/RELEASE_BUILD.md)와 [사용자 안내서](docs/PRODUCT_USER_GUIDE.md)를 참고합니다.
+
 현재 저장소에는 RGB 입력·MediaPipe·보정·상태 관리·로그 베이스라인과 OpenVINO 눈 개폐 교차 판정, MAR 하품 상태, 눈 개방도 그래프가 구현되어 있습니다. 초기 데이터셋 6종도 로컬에 준비되어 데이터 변환과 정량 평가 단계로 진입했습니다.
 
 ## 현재 진행 상황

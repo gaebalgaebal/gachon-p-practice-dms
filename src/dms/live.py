@@ -12,9 +12,8 @@ import platform
 import threading
 import time
 
-from .calibration import Calibrator, EyeHistory, EyeSignalHistory, angle_difference
-from .contracts import DriverState, Features
-from .state import Config, StateEngine
+from .calibration import EyeSignalHistory
+from .state import Config
 
 
 MANUAL_LABEL_KEYS = {
@@ -258,10 +257,7 @@ def run(args):
     latencies, completion_times, unknown, frame_count = [], [], 0, 0
     started = time.perf_counter()
     exit_reason = "not_started"
-    calibration = Calibrator(max_gap=config.max_gap_seconds)
-    eye_history = EyeHistory(max_gap=config.max_gap_seconds)
     eye_signal_history = EyeSignalHistory(max_gap=config.max_gap_seconds)
-    engine = StateEngine(config)
     last_state = None
     last_warning = -math.inf
     source_origin = None
@@ -269,6 +265,7 @@ def run(args):
     applied_neutral = None
     action_model = None
     action_smoother = None
+    product_engine = None
     eye_model = None
     torch_cuda = None
     ground_truth = "unknown"
@@ -292,6 +289,9 @@ def run(args):
         if args.eye_model:
             from .eye import OpenVINOEyeClassifier
             eye_model = OpenVINOEyeClassifier(args.eye_model, args.eye_device)
+        from .product import DmsEngine
+        product_engine = DmsEngine(analyzer, config, eye_model, action_model, action_smoother,
+                                   args.action_interval, action_model is not None)
         if args.video:
             cap = cv2.VideoCapture(str(args.video.resolve()))
         elif platform.system() == "Windows":
@@ -355,53 +355,24 @@ def run(args):
             if min(cw, ch) < 70:
                 raise ValueError("Selected ROI is too small; use at least 70x70 pixels")
             crop = frame[y:y + ch, x:x + cw]
-            observation = analyzer.analyze(crop, t)
+            product_result = product_engine.process(crop, t)
+            observation = product_result.observation
             valid = observation.valid
-            neutral = calibration.update(
-                t, observation.ear if valid else None,
-                observation.yaw if valid else None, observation.pitch if valid else None,
-                observation.iris_x if valid else None,
-                observation.iris_y if valid else None,
-            )
+            neutral = product_engine.calibrator.neutral
             if neutral is not None and applied_neutral is None:
-                engine = StateEngine(neutral.config(config))
                 applied_neutral = neutral
                 (args.output / "calibration.json").write_text(
-                    json.dumps({"neutral": asdict(neutral), "rules": asdict(engine.config)}, indent=2),
+                    json.dumps({"neutral": asdict(neutral),
+                                "rules": asdict(product_engine.engine.config)}, indent=2),
                     encoding="utf-8",
                 )
-            yaw = angle_difference(observation.yaw, neutral.yaw) if valid and neutral else None
-            pitch = angle_difference(observation.pitch, neutral.pitch) if valid and neutral else None
-            gaze_x = (observation.iris_x - neutral.iris_x
-                      if valid and neutral and observation.iris_x is not None
-                      and neutral.iris_x is not None else None)
-            gaze_y = (observation.iris_y - neutral.iris_y
-                      if valid and neutral and observation.iris_y is not None
-                      and neutral.iris_y is not None else None)
-            usable = valid and neutral is not None
-            eye_scores = eye_model.predict(crop, observation.points) if eye_model and usable else None
-            eye_closed_score = eye_scores.closed_score if eye_scores is not None else None
-            features = Features(t, observation.ear, yaw, usable, pitch, gaze_x, gaze_y,
-                                observation.mar, eye_closed_score, eye_model is not None)
-            state = engine.update(features)
-            source = "mediapipe_ear_pose_iris_v1" if gaze_x is not None else "mediapipe_ear_pose_v1"
-            state = DriverState(t, state.drowsiness, state.attention, action="unknown",
-                                source=source, yawn=state.yawn, eye=state.eye)
-            action_scores = {}
-            action_input_usable = action_model and (usable or not action_model.requires_face)
-            if action_input_usable:
-                if frame_count % args.action_interval == 0:
-                    raw_action, raw_scores = action_model.predict(crop)
-                    action, action_scores = action_smoother.update(raw_action, raw_scores)
-                else:
-                    action, action_scores = action_smoother.current()
-                state = DriverState(t, state.drowsiness, state.attention, action=action,
-                                    source=state.source, yawn=state.yawn, eye=state.eye)
-            elif action_smoother:
-                # Never retain an action after the face/ROI becomes unusable.
-                action_smoother.reset()
-            closed = observation.ear < engine.config.ear_close if usable else None
-            fraction, coverage = eye_history.update(t, closed)
+            yaw, pitch = product_result.relative_yaw, product_result.relative_pitch
+            gaze_x, gaze_y = product_result.relative_gaze_x, product_result.relative_gaze_y
+            usable, eye_scores = product_result.usable, product_result.eye_scores
+            eye_closed_score, state = product_result.eye_closed_score, product_result.state
+            action_scores = product_result.action_scores
+            closed = product_result.closed
+            fraction, coverage = product_result.closed_fraction, product_result.eye_coverage
             eye_trace = eye_signal_history.update(
                 t, observation.left_ear if usable else None,
                 observation.right_ear if usable else None,
@@ -417,7 +388,7 @@ def run(args):
             info = {"calibration": "ready" if neutral else "hold forward / eyes open",
                     "yaw": yaw, "pitch": pitch, "gaze_x": gaze_x, "gaze_y": gaze_y,
                     "closed_fraction": fraction, "eye_coverage": coverage,
-                    "ear_close": engine.config.ear_close,
+                    "ear_close": product_engine.engine.config.ear_close,
                     "eye_closed_score": eye_closed_score,
                     "ground_truth": ground_truth,
                     "action_detections": getattr(action_model, "last_detections", [])}
@@ -500,10 +471,8 @@ def run(args):
                 exit_reason = "user_exit"
                 break
             if key == ord('c'):
-                calibration.reset()
+                product_engine.reset_calibration()
                 applied_neutral = None
-                engine = StateEngine(config)
-                eye_history = EyeHistory(max_gap=config.max_gap_seconds)
                 eye_signal_history.reset()
                 json_line(events_log, {"type": "recalibration", "timestamp_s": t})
             if args.max_frames and frame_count >= args.max_frames:
@@ -515,7 +484,10 @@ def run(args):
         raise
     finally:
         elapsed = time.perf_counter() - started
-        analyzer.close()
+        if product_engine is not None:
+            product_engine.close()
+        else:
+            analyzer.close()
         if cap is not None:
             cap.release()
         if writer is not None:
@@ -585,8 +557,8 @@ def run(args):
                        "video_source_fps": source_fps, "source_duration_s": previous_t,
                        "python": platform.python_version(), "platform": platform.platform(),
                        "versions": versions, "model_sha256": hashlib.sha256(args.model.read_bytes()).hexdigest(),
-                       "config": asdict(config), "effective_config": asdict(engine.config),
-                       "calibrated": calibration.neutral is not None,
+                       "config": asdict(config), "effective_config": asdict(product_engine.engine.config),
+                       "calibrated": product_engine.calibrator.neutral is not None,
                        "roi": args.roi, "recorded": args.record,
                        "raw_recorded": args.record_raw,
                        "record_fps": (args.record_fps or source_fps)

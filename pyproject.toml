@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gachon-p-practice-dms"
-version = "0.3.0"
-description = "Gachon P-Practice real-time RGB driver monitoring demo"
+version = "0.4.0"
+description = "Windows-ready real-time RGB driver monitoring application"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
@@ -14,10 +14,13 @@ dependencies = []
 vision = ["mediapipe==0.10.35", "opencv-contrib-python==4.13.0.92", "numpy==2.2.6"]
 eye = ["openvino==2026.4.1"]
 action = ["torch==2.9.1", "torchvision==0.24.1", "Pillow>=11,<14", "onnx>=1.17,<2"]
+desktop = ["PySide6-Essentials>=6.8,<7", "psutil>=6,<8"]
+build = ["PyInstaller>=6.11,<7"]
 
 [project.scripts]
 dms-demo = "dms.__main__:main"
 dms-live = "dms.live:main"
+dms-desktop = "dms.desktop:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

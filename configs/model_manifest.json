@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "models": {
+    "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+    "open_closed_eye.onnx": "4daa100034482525a26c9afb9297c16580a531189e66e3d2b2ac7d32becfd593"
+  }
+}

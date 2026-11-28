@@ -38,6 +38,16 @@
 
 ## 후속 마일스톤
 
+### Windows 기업 PoC 제품화
+
+- [x] UI 독립 `DmsEngine`과 카메라·설정·세션·진단 서비스
+- [x] 시작·보정·모니터링·결과·설정 데스크톱 화면
+- [x] 기본 영상 미저장과 CSV·JSON 이벤트 내보내기
+- [x] 휴대폰 기능 관리자 시험 설정 격리
+- [x] 모델 SHA-256, 저장공간, 비정상 세션 복구, 로그 보관·삭제
+- [x] PyInstaller·Inno Setup 오프라인 설치 빌드 구성
+- [ ] 실제 Windows 무관리자 설치·30분 연속 실기 검증
+
 ### 모델 통합
 
 - [x] MediaPipe EAR·MAR·Head Pose

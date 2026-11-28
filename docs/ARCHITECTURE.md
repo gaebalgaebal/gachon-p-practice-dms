@@ -27,6 +27,15 @@ flowchart TD
 | dms.action | 선택적 과제 학습 체크포인트 로딩·추론 |
 | dms.metrics | unknown을 누락시키지 않는 분류 평가 |
 | dms.__main__ | 기존 합성 특징 CSV 재생 경로 |
+| dms.product | CLI·UI 공통 프레임 추론 엔진과 제품 상태 계약 |
+| dms.services | 카메라, 설정, 세션, 진단, 모델 무결성 서비스 |
+| dms.desktop | Windows 데스크톱 화면과 백그라운드 추론 스레드 |
+
+## 제품 실행 계층
+
+데스크톱 UI와 기존 CLI는 동일한 `DmsEngine`을 사용한다. UI 스레드는 화면 갱신과 사용자 입력만 처리하고, 카메라 읽기와 추론은 별도 작업 스레드에서 실행한다. 제품 세션은 개별 프레임을 저장하지 않고 경고 이벤트와 성능 요약만 기록한다.
+
+`CameraService → DmsEngine → SessionService` 흐름을 기준으로 UI를 교체하거나 기업 측 연동 계층을 추가할 수 있다. 휴대폰 행동 결과는 시험 설정을 명시적으로 켠 경우에만 엔진에 로드되며 운영 경고 판정에는 포함하지 않는다.
 
 ## 얼굴 특징
 
